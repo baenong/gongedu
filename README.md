@@ -10,8 +10,11 @@
 </p>
 
 <p align="center">
+  <a href="https://react.dev/"><img src="https://img.shields.io/badge/React-19-61DAFB.svg?logo=react&logoColor=black" /></a>
   <a href="https://www.typescriptlang.org/>"><img src="https://img.shields.io/badge/Typescript-5.9.3-blue.svg" /></a>
-  <img src="https://img.shields.io/badge/version-0.9.0-yellow.svg"/>
+  <img src="https://img.shields.io/badge/Node-22-339933.svg?logo=node.js&logoColor=white" />
+  <a href="https://www.docker.com/"><img src="https://img.shields.io/badge/Docker-배포-2496ED.svg?logo=docker&logoColor=white" /></a>
+  <img src="https://img.shields.io/badge/version-0.9.2-orange.svg"/>
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License: MIT" /></a>
 </p>
 
