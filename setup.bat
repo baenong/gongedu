@@ -17,9 +17,6 @@ if exist "backend\.env" (
     if /i not "%OVERWRITE%"=="y" goto SKIP_ENV
 )
 
-set /p INPUT_PORT="서버 포트를 입력하세요 (기본값: 8180): "
-if "%INPUT_PORT%"=="" set INPUT_PORT=8180
-
 :INPUT_SECRET
 set /p INPUT_SECRET="JWT 시크릿 키를 입력하세요 (필수): "
 if "%INPUT_SECRET%"=="" (
@@ -28,7 +25,7 @@ if "%INPUT_SECRET%"=="" (
 )
 
 (
-    echo PORT=%INPUT_PORT%
+    echo PORT=8180
     echo JWT_SECRET=%INPUT_SECRET%
 ) > backend\.env
 echo .env 파일이 생성되었습니다.

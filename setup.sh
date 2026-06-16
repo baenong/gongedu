@@ -22,9 +22,6 @@ if [ -f "backend/.env" ]; then
 fi
 
 if [ "${SKIP_ENV}" -eq 0 ]; then
-    read -p "서버 포트를 입력하세요 (기본값: 8180): " INPUT_PORT
-    INPUT_PORT="${INPUT_PORT:-8180}"
-
     while true; do
         read -p "JWT 시크릿 키를 입력하세요 (필수): " INPUT_SECRET
         if [ -n "${INPUT_SECRET}" ]; then
@@ -34,7 +31,7 @@ if [ "${SKIP_ENV}" -eq 0 ]; then
     done
 
     cat > backend/.env <<EOF
-PORT=${INPUT_PORT}
+PORT=8180
 JWT_SECRET=${INPUT_SECRET}
 EOF
     echo ".env 파일이 생성되었습니다."
