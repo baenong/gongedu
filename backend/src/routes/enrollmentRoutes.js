@@ -307,6 +307,19 @@ router.get("/course/:courseId/download-zip", authenticateToken, (req, res) => {
       params.push(departmentId);
     }
 
+    // 교육담당: 쿼리 파라미터 필터 적용
+    const filterDeptId = role === roles["교육담당"] ? parseInt(req.query.departmentId) || 0 : 0;
+    const filterTeamId = role === roles["교육담당"] ? parseInt(req.query.teamId) || 0 : 0;
+
+    if (filterDeptId) {
+      query += ` AND u.department_id = ?`;
+      params.push(filterDeptId);
+    }
+    if (filterTeamId) {
+      query += ` AND u.team_id = ?`;
+      params.push(filterTeamId);
+    }
+
     const files = db.prepare(query).all(...params);
 
     if (files.length === 0) {
@@ -315,14 +328,34 @@ router.get("/course/:courseId/download-zip", authenticateToken, (req, res) => {
     const archive = archiver("zip", { zlib: { level: 9 } });
 
     const timeStr = getFormattedTime();
-    const safeDept = sanitizeFilename(department);
     const safeCourse = sanitizeFilename(course.name);
 
     // 파일명 설정
-    const downloadName =
-      role === roles["팀계담당"]
-        ? `[${safeDept}]${team}_${safeCourse}_${timeStr}.zip`
-        : `[${safeDept}]${safeCourse}_${timeStr}.zip`;
+    let downloadName;
+    if (role === roles["팀계담당"]) {
+      const safeDept = sanitizeFilename(department);
+      downloadName = `[${safeDept}]${team}_${safeCourse}_${timeStr}.zip`;
+    } else if (role === roles["부서담당"]) {
+      const safeDept = sanitizeFilename(department);
+      downloadName = `[${safeDept}]${safeCourse}_${timeStr}.zip`;
+    } else {
+      // 교육담당: 필터 수준에 따라 파일명 결정
+      if (filterTeamId) {
+        const filteredTeam = db.prepare("SELECT name, department_id FROM teams WHERE id = ?").get(filterTeamId);
+        const filteredDept = filteredTeam
+          ? db.prepare("SELECT name FROM departments WHERE id = ?").get(filteredTeam.department_id)
+          : null;
+        const safeDept = sanitizeFilename(filteredDept?.name ?? "");
+        const safeTeam = sanitizeFilename(filteredTeam?.name ?? "");
+        downloadName = `[${safeDept}]${safeTeam}_${safeCourse}_${timeStr}.zip`;
+      } else if (filterDeptId) {
+        const filteredDept = db.prepare("SELECT name FROM departments WHERE id = ?").get(filterDeptId);
+        const safeDept = sanitizeFilename(filteredDept?.name ?? "");
+        downloadName = `[${safeDept}]${safeCourse}_${timeStr}.zip`;
+      } else {
+        downloadName = `${safeCourse}_${timeStr}.zip`;
+      }
+    }
 
     const encodedName = encodeURIComponent(downloadName);
     res.setHeader(

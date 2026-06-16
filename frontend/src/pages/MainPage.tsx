@@ -287,9 +287,14 @@ const MainPage = () => {
   // ZIP 다운로드
   const handleZipDownload = async (courseId: number, courseName: string) => {
     try {
+      const params: Record<string, number> = {};
+      if (isSuperAdmin) {
+        if (filterDepartment !== 0) params.departmentId = filterDepartment;
+        if (filterTeam !== 0) params.teamId = filterTeam;
+      }
       const response = await api.get(
         `/enrollments/course/${courseId}/download-zip`,
-        { responseType: "blob" },
+        { responseType: "blob", params },
       );
 
       let filename = `${courseName}_수료증.zip`;
