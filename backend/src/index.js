@@ -24,7 +24,7 @@ if (!fs.existsSync(logDir)) fs.mkdirSync(logDir, { recursive: true });
 dotenv.config();
 
 const app = express();
-app.set("trust proxy", "127.0.0.1"); // 프록시 IP 설정
+app.set("trust proxy", 1); // Docker nginx 컨테이너를 첫 번째 프록시로 신뢰
 
 morgan.token("user", (req, res) => {
   if (req.user && req.user.username) {

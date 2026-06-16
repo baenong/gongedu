@@ -630,7 +630,7 @@ const MainPage = () => {
                                       border border-indigo-200 dark:border-indigo-800
                                       text-center px-4 py-2 rounded-md text-base font-medium transition"
                         >
-                          📂 수료증 업로드 (최대 6MB)
+                          📂 수료증 업로드 (최대 1MB)
                           <input
                             type="file"
                             accept=".pdf,.jpg,.png"
