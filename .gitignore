@@ -23,10 +23,7 @@ backend/uploads/
 backend/backup/
 
 # SQLite 데이터베이스
-backend/*.db
-backend/*.sqlite
-backend/*.db-shm
-backend/*.db-wal
+backend/data/
 
 # 에디터
 .vscode/*

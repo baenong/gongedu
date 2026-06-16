@@ -33,13 +33,13 @@ echo .env 파일이 생성되었습니다.
 :SKIP_ENV
 echo.
 
-:: 2. DB 파일 초기화
-echo [2/3] DB 파일 초기화...
-if not exist "backend\education.db" (
-    type nul > backend\education.db
-    echo education.db 파일이 생성되었습니다.
+:: 2. DB 디렉토리 초기화
+echo [2/3] DB 디렉토리 초기화...
+if not exist "backend\data" (
+    mkdir backend\data
+    echo data 디렉토리가 생성되었습니다.
 ) else (
-    echo education.db 파일이 이미 존재합니다.
+    echo data 디렉토리가 이미 존재합니다.
 )
 echo.
 

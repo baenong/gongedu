@@ -9,7 +9,7 @@ import db from "../database.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.join(__dirname, "..");
-const dbPath = path.join(rootDir, "education.db");
+const dbPath = path.join(rootDir, "../data/education.db");
 const uploadDir = path.join(rootDir, `../uploads`);
 const backupDir = path.join(rootDir, "../backup");
 

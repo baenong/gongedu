@@ -3,7 +3,7 @@ services:
     build: ./backend
     env_file: ./backend/.env
     volumes:
-      - ./backend/education.db:/app/education.db
+      - ./backend/data:/app/data
       - ./backend/uploads:/app/uploads
       - ./logs:/logs
     restart: unless-stopped
