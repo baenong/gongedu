@@ -5,6 +5,7 @@ services:
     volumes:
       - ./backend/data:/app/data
       - ./backend/uploads:/app/uploads
+      - ./backend/backup:/app/backup
       - ./logs:/logs
     restart: unless-stopped
 

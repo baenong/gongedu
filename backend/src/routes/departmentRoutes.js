@@ -411,7 +411,7 @@ router.put("/teams/:id", authenticateToken, requireAdmin, (req, res) => {
       .get(departmentId, name, id);
 
     if (existingName) {
-      return res.status(400).json({ message: "중복된 부서 이름입니다." });
+      return res.status(400).json({ message: "중복된 팀 이름입니다." });
     }
 
     // 부서 내 인덱스가 중복되는지 확인
@@ -434,7 +434,7 @@ router.put("/teams/:id", authenticateToken, requireAdmin, (req, res) => {
 
     stmt.run(name, orderIndex, id);
 
-    res.json({ message: "부서가 수정되었습니다." });
+    res.json({ message: "팀/계가 수정되었습니다." });
 
     // 변경 실시
   } catch (error) {

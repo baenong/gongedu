@@ -9,7 +9,7 @@ import {
   authenticateToken,
   requireAdmin,
 } from "../middlewares/authMiddleware.js";
-import { getFormattedTime } from "../utils/formatHelper.js";
+import { getFormattedTime, getCurrentKST } from "../utils/formatHelper.js";
 import { roles } from "../../constants.js";
 
 const router = express.Router();
@@ -20,13 +20,6 @@ const uploadDir = path.join(__dirname, "../../uploads");
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
-
-// SQLite의 기본 설정은 북미시간이기 때문에 시차 조정
-const getCurrentKST = () => {
-  const now = new Date();
-  const kstDate = new Date(now.getTime() + 9 * 60 * 60 * 1000);
-  return kstDate.toISOString().replace("T", " ").substring(0, 19);
-};
 
 // 파일명에서 특수문자 제거
 const sanitizeFilename = (name) => {

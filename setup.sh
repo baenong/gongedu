@@ -50,7 +50,11 @@ echo
 
 # 3. Docker Compose 실행
 echo "[3/3] 컨테이너 빌드 및 실행 중... (시간이 걸릴 수 있습니다)"
-docker compose up -d --build
+if ! docker compose up -d --build; then
+    echo
+    echo "[오류] Docker 실행에 실패했습니다. Docker가 설치되어 있는지 확인하세요."
+    exit 1
+fi
 
 echo
 echo "=========================================="

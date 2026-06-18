@@ -1,9 +1,16 @@
+const getKSTDate = () => new Date(Date.now() + 9 * 60 * 60 * 1000);
+
+export const getCurrentKST = () => {
+  const kst = getKSTDate();
+  return kst.toISOString().replace("T", " ").substring(0, 19);
+};
+
 export const getFormattedTime = () => {
-  const now = new Date();
-  const yyyy = now.getFullYear();
-  const mm = String(now.getMonth() + 1).padStart(2, "0");
-  const dd = String(now.getDate()).padStart(2, "0");
-  const hh = String(now.getHours()).padStart(2, "0");
-  const min = String(now.getMinutes()).padStart(2, "0");
+  const kst = getKSTDate();
+  const yyyy = kst.getUTCFullYear();
+  const mm = String(kst.getUTCMonth() + 1).padStart(2, "0");
+  const dd = String(kst.getUTCDate()).padStart(2, "0");
+  const hh = String(kst.getUTCHours()).padStart(2, "0");
+  const min = String(kst.getUTCMinutes()).padStart(2, "0");
   return `${yyyy}${mm}${dd}_${hh}${min}`;
 };
