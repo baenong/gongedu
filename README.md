@@ -282,3 +282,9 @@ PuTTY 창은 SSH 연결 유지를 위해 열어 두어야 합니다.
 | Backend  | Node.js, Express v5, better-sqlite3                 |
 | 인증     | JWT, bcryptjs, IP 화이트리스트                      |
 | 기타     | archiver (ZIP 생성), exceljs (엑셀 내보내기), nginx |
+
+---
+
+## 만든 사람
+
+전북특별자치도 군산시 행정지원과 안민수
