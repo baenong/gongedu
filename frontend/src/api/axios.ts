@@ -30,7 +30,7 @@ api.interceptors.response.use(
     if (status === 401) {
       console.warn("인증 필요 (토큰 없음)");
       useAuthStore.getState().logout();
-    } else if (status === 403 && data?.code === "TOKEN_EXPIRED") {
+    } else if (status === 403 && (data?.code === "TOKEN_EXPIRED" || data?.code === "INVALID_TOKEN")) {
       console.warn("세션 만료");
       useAuthStore.getState().logout();
     }
