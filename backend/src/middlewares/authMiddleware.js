@@ -1,10 +1,11 @@
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import requestIp from "request-ip";
+import ipRangeCheck from "ip-range-check";
 import { roles } from "../../constants.js";
 
 dotenv.config();
-const LOCAL_IPS = ["127.0.0.1", "::1", "::ffff:127.0.0.1"];
+const LOCAL_RANGES = ["127.0.0.1", "::1", "::ffff:127.0.0.1", "172.16.0.0/12"];
 
 // 로그인 여부 확인 (토큰 유효성 검사)
 export const authenticateToken = (req, res, next) => {
@@ -39,7 +40,7 @@ export const authenticateToken = (req, res, next) => {
     if (user.role === roles["시스템관리자"]) {
       const clientIp = requestIp.getClientIp(req);
 
-      if (!LOCAL_IPS.includes(clientIp)) {
+      if (!ipRangeCheck(clientIp, LOCAL_RANGES)) {
         console.warn(
           `🚨 외부에서 시스템 관리자 접근 시도 차단됨! IP: ${clientIp}`,
         );
