@@ -12,7 +12,7 @@ const Badge = ({
   className = "",
   ...props
 }: BadgeProps) => {
-  const baseStyle = `px-2 py-1 text-sm font-semibold rounded-full ${
+  const baseStyle = `px-2 py-1 text-sm font-semibold rounded-full whitespace-nowrap ${
     isDone
       ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
       : isUrgent
