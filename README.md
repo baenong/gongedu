@@ -6,6 +6,8 @@
 
 <p align="center">
   <img src="./.github/assets/logo-white.svg" width="256"><br>
+  <br><i>"공직자 1시간은, 5200만 시간 가치"</i>
+  <br>
   <br><strong>공무원 필수교육, 이제 한 곳에서 관리합니다.</strong>
   <br>각 직원이 이수증을 올리고, 담당자는 한 눈에 이수 현황을 파악할 수 있습니다.
   <br><br> - 전북특별자치도 군산시 행정지원과 안민수 -
@@ -16,7 +18,7 @@
   <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/Typescript-5.9.3-blue.svg" /></a>
   <img src="https://img.shields.io/badge/Node-22-339933.svg?logo=node.js&logoColor=white" />
   <a href="https://www.docker.com/"><img src="https://img.shields.io/badge/Docker-배포-2496ED.svg?logo=docker&logoColor=white" /></a>
-  <img src="https://img.shields.io/badge/version-0.9.2-orange.svg"/>
+  <img src="https://img.shields.io/badge/version-0.9.3-orange.svg"/>
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License: MIT" /></a>
 </p>
 
@@ -52,6 +54,8 @@
 
 1. 실시간 이수 현황 조회로 미제출자 즉시 확인
 2. 별도 취합 절차없이 ZIP 일괄 다운로드로 제출 완료
+3. 계정 기반 수료증 관리로 부서이동하더라도 자동으로 연계
+   ▶ 인사이동으로 인한 수료증 누락 확인/중복 제출 등 예방
 
 | 구분    | 교육당 소요시간 | 연간 총 소요시간                       |
 | ------- | --------------- | -------------------------------------- |
@@ -211,11 +215,11 @@ setup 실행 순서
 
 **프론트엔드 배포 방식**
 
-| 선택 | 방식 | 이런 경우 선택하세요 |
-| ---- | ---- | ---- |
-| 1 (권장) | 미리 빌드된 이미지 | 소스 수정 없이 그대로 사용하는 경우 |
-| 1 (권장) | 미리 빌드된 이미지 | 프록시·방화벽 환경에서 Docker 빌드 중 npm 오류가 발생하는 경우 |
-| 2 | 직접 빌드 | 소스를 수정·커스터마이징했고, Docker 빌드 시 npm이 정상 동작하는 환경 |
+| 선택     | 방식               | 이런 경우 선택하세요                                                  |
+| -------- | ------------------ | --------------------------------------------------------------------- |
+| 1 (권장) | 미리 빌드된 이미지 | 소스 수정 없이 그대로 사용하는 경우                                   |
+| 1 (권장) | 미리 빌드된 이미지 | 프록시·방화벽 환경에서 Docker 빌드 중 npm 오류가 발생하는 경우        |
+| 2        | 직접 빌드          | 소스를 수정·커스터마이징했고, Docker 빌드 시 npm이 정상 동작하는 환경 |
 
 > **주의:** 직접 빌드(2번)는 서버에 npm을 설치하는 것이 아니라 Docker 컨테이너 안에서 npm을 실행합니다.
 > 프록시·방화벽으로 컨테이너 내부에서 npm 레지스트리 접근이 차단된 환경이라면 직접 빌드도 동일하게 실패하므로 1번을 선택하세요.
@@ -250,7 +254,7 @@ docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
    ```yaml
    frontend:
      ports:
-       - "127.0.0.1:8081:80"   # 예시. 원하는 내부 포트로 변경
+       - "127.0.0.1:8081:80" # 예시. 원하는 내부 포트로 변경
    ```
 
 2. **`frontend/nginx.conf`에서 클라이언트 IP 전달 방식을 수정**합니다. gongedu는 총괄관리자(`geadmin`) 로컬 전용 로그인 제한과 IP 대역 화이트리스트 기능이 실제 접속자 IP에 의존합니다. 앞단에 nginx가 하나 더 있으면 컨테이너 nginx 입장에선 접속자가 항상 앞단 nginx로 보이므로, 아래처럼 앞단이 전달한 IP를 그대로 이어받도록 고쳐야 합니다. 그렇지 않으면 두 기능 모두 무력화됩니다.
