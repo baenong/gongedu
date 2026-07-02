@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import api from "../api/axios";
 import axios from "axios";
 import { useAuthStore } from "../store/authStore";
@@ -11,6 +11,8 @@ import Badge from "../components/Badge";
 import FormButton from "../components/FormButton";
 import FormLabel from "../components/FormLabel";
 import TextInput from "../components/TextInput";
+import CalendarView from "../components/CalendarView";
+import { groupEventsByDate, type CalendarEvent } from "../utils/calendarUtils";
 import { getErrorMessage } from "../utils/errorUtils";
 import { roles } from "../utils/constants";
 
@@ -44,6 +46,19 @@ const MainPage = () => {
   const [showUnfinishedOnly, setShowUnfinishedOnly] = useState(false);
   const [showOwnCoursesOnly, setShowOwnCoursesOnly] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  const [calendarMonth, setCalendarMonth] = useState(new Date().getMonth());
+  const [isCalendarCollapsed, setIsCalendarCollapsed] = useState(true);
+
+  useEffect(() => {
+    const now = new Date();
+    setCalendarMonth(year === now.getFullYear() ? now.getMonth() : 0);
+  }, [year]);
+
+  const courseRefs = useRef<Record<number, HTMLDivElement | null>>({});
+  const [highlightedCourseIds, setHighlightedCourseIds] = useState<Set<number>>(
+    new Set(),
+  );
 
   // 교육 등록 모달 상태
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -424,10 +439,35 @@ const MainPage = () => {
     return !getMyEnrollment(c.id);
   });
 
+  const calendarEventsByDate = groupEventsByDate(
+    filteredCourses,
+    getMyEnrollment,
+  );
+
+  const handleCalendarMonthChange = (newYear: number, newMonth: number) => {
+    setCalendarMonth(newMonth);
+    if (newYear !== year) setYear(newYear);
+  };
+
+  const handleDateClick = (_dateKey: string, events: CalendarEvent[]) => {
+    if (events.length === 0) return;
+
+    setIsCalendarCollapsed(true);
+
+    const ids = events.map((e) => e.courseId);
+    courseRefs.current[ids[0]]?.scrollIntoView({
+      behavior: "smooth",
+      block: "center",
+    });
+
+    setHighlightedCourseIds(new Set(ids));
+    setTimeout(() => setHighlightedCourseIds(new Set()), 2000);
+  };
+
   return (
-    <div className="space-y-6 pb-8">
+    <div className="h-full flex flex-col gap-6">
       {/* 상단 컨트롤 바 */}
-      <div className="sticky top-0 z-30 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+      <div className="flex-shrink-0 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
             <span className="font-semibold text-gray-700 dark:text-gray-200">
@@ -476,43 +516,57 @@ const MainPage = () => {
         )}
       </div>
 
-      {/* 교육과정 목록 (카드 리스트) */}
-      <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-2">
-        {isLoading ? (
-          <div className="col-span-full text-center py-10 text-gray-500">
-            로딩 중...
-          </div>
-        ) : filteredCourses.length === 0 ? (
-          <div className="col-span-full text-center py-10 text-gray-500 dark:text-gray-400">
-            등록된 교육과정이 없습니다.
-          </div>
-        ) : (
-          filteredCourses.map((course) => {
-            const enrollment = getMyEnrollment(course.id);
-            const isDone = !!enrollment;
+      <div className="flex-1 min-h-0 flex flex-col lg:flex-row gap-4">
+        <CalendarView
+          year={year}
+          month={calendarMonth}
+          onMonthChange={handleCalendarMonthChange}
+          eventsByDate={calendarEventsByDate}
+          onDateClick={handleDateClick}
+          isCollapsed={isCalendarCollapsed}
+          onToggleCollapsed={() => setIsCalendarCollapsed((c) => !c)}
+        />
 
-            const total = course.total_count || 0;
-            const submitted = course.submitted_count || 0;
-            const isAllSubmitted = total > 0 && submitted >= total;
+        {/* 교육과정 목록 (카드 리스트) */}
+        <div className="flex-1 lg:min-w-[364px] min-h-0 overflow-y-auto scrollbar-hide grid gap-6 grid-cols-1 min-[700px]:grid-cols-2 lg:grid-cols-1 content-start px-5 pb-2">
+          {isLoading ? (
+            <div className="col-span-full text-center py-10 text-gray-500">
+              로딩 중...
+            </div>
+          ) : filteredCourses.length === 0 ? (
+            <div className="col-span-full text-center py-10 text-gray-500 dark:text-gray-400">
+              등록된 교육과정이 없습니다.
+            </div>
+          ) : (
+            filteredCourses.map((course) => {
+              const enrollment = getMyEnrollment(course.id);
+              const isDone = !!enrollment;
 
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            const endDate = new Date(course.end_date);
-            endDate.setHours(0, 0, 0, 0);
+              const total = course.total_count || 0;
+              const submitted = course.submitted_count || 0;
+              const isAllSubmitted = total > 0 && submitted >= total;
 
-            const timeDiff = endDate.getTime() - today.getTime();
-            const diffDays = Math.ceil(timeDiff / (1000 * 3600 * 24));
+              const today = new Date();
+              today.setHours(0, 0, 0, 0);
+              const endDate = new Date(course.end_date);
+              endDate.setHours(0, 0, 0, 0);
 
-            const isUrgent = !isDone && diffDays >= 0 && diffDays <= 7;
-            const isExpired = diffDays < 0;
+              const timeDiff = endDate.getTime() - today.getTime();
+              const diffDays = Math.ceil(timeDiff / (1000 * 3600 * 24));
 
-            const isOwnActiveCourse =
-              user?.role === roles["교육담당"] && isOwnCourse(course);
+              const isUrgent = !isDone && diffDays >= 0 && diffDays <= 7;
+              const isExpired = diffDays < 0;
 
-            return (
-              <div
-                key={course.id}
-                className={`relative bg-white dark:bg-gray-800 rounded-lg shadow border-l-4 p-5
+              const isOwnActiveCourse =
+                user?.role === roles["교육담당"] && isOwnCourse(course);
+
+              return (
+                <div
+                  key={course.id}
+                  ref={(el) => {
+                    courseRefs.current[course.id] = el;
+                  }}
+                  className={`relative bg-white dark:bg-gray-800 rounded-lg shadow border-l-4 p-5
                   transition-all duration-300 ease-in-out hover:scale-[1.02] hover:shadow-xl hover:z-10
                   dark:hover:shadow-cyan-500/50
                   ${
@@ -526,88 +580,117 @@ const MainPage = () => {
                             ? "border-sky-400"
                             : "border-orange-500"
                   }
+                  ${highlightedCourseIds.has(course.id) ? "ring-4 ring-yellow-400 dark:ring-orange-500/60" : ""}
                   cursor-pointer`}
-                onClick={() => openDetailModal(course)}
-              >
-                <div className="flex justify-between items-start mb-3">
-                  <div>
-                    <h3
-                      className={`text-2xl font-bold flex items-center gap-2 mb-1 ${isExpired && !isDone ? "text-gray-400 dark:text-gray-500" : "text-gray-900 dark:text-white"}`}
-                    >
-                      {course.name}
-                      {/* 관리자에게만 보이는 상세보기 힌트 아이콘 */}
-                      {isManager && (
-                        <span className="text-base font-normal text-gray-400">
-                          🔍
-                        </span>
-                      )}
-
-                      {isUrgent && (
-                        <span className="animate-pulse inline-flex items-center px-2 py-0.5 rounded text-base font-bold bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-200">
-                          🔥 마감임박 (D-{diffDays === 0 ? "Day" : diffDays})
-                        </span>
-                      )}
-
-                      {isExpired && !isDone && (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-base font-bold bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400">
-                          ⛔ 마감됨
-                        </span>
-                      )}
-                    </h3>
-
-                    <p
-                      className={`text-base ${isUrgent ? "text-red-600 dark:text-red-400 font-semibold" : "text-gray-500 dark:text-gray-400"}`}
-                    >
-                      마감일: {formatDateWithDay(course.end_date)}
-                    </p>
-
-                    {isManager && (
-                      <div className="mt-2 flex items-center gap-2">
-                        <span className="text-base font-semibold text-indigo-600 dark:text-indigo-400">
-                          📊{" "}
-                          {isSuperAdmin
-                            ? ""
-                            : isDeptManager
-                              ? user.department
-                              : user.team}{" "}
-                          {isOwnCourse(course)
-                            ? `제출현황: ${submitted} / ${total} 명`
-                            : "타 부서 교육"}
-                        </span>
-
-                        {isAllSubmitted && (
-                          <span className="px-2 py-0.5 text-base font-bold rounded bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-200 border border-indigo-200 dark:border-indigo-700 animate-pulse">
-                            🎉 완료
+                  onClick={() => openDetailModal(course)}
+                >
+                  <div className="flex justify-between items-start mb-3">
+                    <div>
+                      <h3
+                        className={`text-2xl font-bold flex items-center gap-2 mb-1 ${isExpired && !isDone ? "text-gray-400 dark:text-gray-500" : "text-gray-900 dark:text-white"}`}
+                      >
+                        {course.name}
+                        {/* 관리자에게만 보이는 상세보기 힌트 아이콘 */}
+                        {isManager && (
+                          <span className="text-base font-normal text-gray-400">
+                            🔍
                           </span>
                         )}
-                      </div>
-                    )}
+
+                        {isUrgent && (
+                          <span className="animate-pulse inline-flex items-center px-2 py-0.5 rounded text-base font-bold bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-200">
+                            🔥 마감임박 (D-{diffDays === 0 ? "Day" : diffDays})
+                          </span>
+                        )}
+
+                        {isExpired && !isDone && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-base font-bold bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400">
+                            ⛔ 마감됨
+                          </span>
+                        )}
+                      </h3>
+
+                      <p
+                        className={`text-base ${isUrgent ? "text-red-600 dark:text-red-400 font-semibold" : "text-gray-500 dark:text-gray-400"}`}
+                      >
+                        마감일: {formatDateWithDay(course.end_date)}
+                      </p>
+
+                      {isManager && (
+                        <div className="mt-2 flex items-center gap-2">
+                          <span className="text-base font-semibold text-indigo-600 dark:text-indigo-400">
+                            📊{" "}
+                            {isSuperAdmin
+                              ? ""
+                              : isDeptManager
+                                ? user.department
+                                : user.team}{" "}
+                            {isOwnCourse(course)
+                              ? `제출현황: ${submitted} / ${total} 명`
+                              : "타 부서 교육"}
+                          </span>
+
+                          {isAllSubmitted && (
+                            <span className="px-2 py-0.5 text-base font-bold rounded bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-200 border border-indigo-200 dark:border-indigo-700 animate-pulse">
+                              🎉 완료
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    <Badge isDone={isDone} isUrgent={isUrgent} />
                   </div>
-                  <Badge isDone={isDone} isUrgent={isUrgent} />
-                </div>
 
-                {/* 하단 액션 버튼 (클릭 이벤트 전파 방지 필수) */}
-                <div
-                  className="flex justify-between items-end border-t border-gray-100 dark:border-gray-700 pt-4 mt-2"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <div className="flex-1">
-                    {isDone ? (
-                      <div className="flex gap-2">
-                        <FormButton
-                          onClick={() =>
-                            handleMyDownload(
-                              enrollment.id,
-                              enrollment.file_name!,
-                            )
-                          }
-                        >
-                          📄 수료증 다운
-                        </FormButton>
+                  {/* 하단 액션 버튼 (클릭 이벤트 전파 방지 필수) */}
+                  <div
+                    className="flex justify-between items-end border-t border-gray-100 dark:border-gray-700 pt-4 mt-2"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="flex-1">
+                      {isDone ? (
+                        <div className="flex gap-2">
+                          <FormButton
+                            onClick={() =>
+                              handleMyDownload(
+                                enrollment.id,
+                                enrollment.file_name!,
+                              )
+                            }
+                          >
+                            📄 수료증 다운
+                          </FormButton>
 
-                        <FormButton>
-                          <label className="cursor-pointer">
-                            수정
+                          <FormButton>
+                            <label className="cursor-pointer">
+                              수정
+                              <input
+                                type="file"
+                                accept=".pdf,.jpg,.png"
+                                className="hidden"
+                                onChange={(e) =>
+                                  e.target.files?.[0] &&
+                                  handleFileUpload(course.id, e.target.files[0])
+                                }
+                              />
+                            </label>
+                          </FormButton>
+
+                          <FormButton
+                            onClick={() => deleteMyDownload(enrollment.id)}
+                          >
+                            ❌ 수료내역 삭제
+                          </FormButton>
+                        </div>
+                      ) : (
+                        <div>
+                          <label
+                            className="block w-full cursor-pointer bg-indigo-50 dark:bg-indigo-900/30
+                                    hover:bg-indigo-100 dark:hover:bg-indigo-800
+                                    text-indigo-700 dark:text-indigo-300
+                                      border border-indigo-200 dark:border-indigo-800
+                                      text-center px-4 py-2 rounded-md text-base font-medium transition"
+                          >
+                            📂 수료증 업로드 (최대 1MB)
                             <input
                               type="file"
                               accept=".pdf,.jpg,.png"
@@ -618,42 +701,15 @@ const MainPage = () => {
                               }
                             />
                           </label>
-                        </FormButton>
-
-                        <FormButton
-                          onClick={() => deleteMyDownload(enrollment.id)}
-                        >
-                          ❌ 수료내역 삭제
-                        </FormButton>
-                      </div>
-                    ) : (
-                      <div>
-                        <label
-                          className="block w-full cursor-pointer bg-indigo-50 dark:bg-indigo-900/30
-                                    hover:bg-indigo-100 dark:hover:bg-indigo-800
-                                    text-indigo-700 dark:text-indigo-300
-                                      border border-indigo-200 dark:border-indigo-800
-                                      text-center px-4 py-2 rounded-md text-base font-medium transition"
-                        >
-                          📂 수료증 업로드 (최대 1MB)
-                          <input
-                            type="file"
-                            accept=".pdf,.jpg,.png"
-                            className="hidden"
-                            onChange={(e) =>
-                              e.target.files?.[0] &&
-                              handleFileUpload(course.id, e.target.files[0])
-                            }
-                          />
-                        </label>
-                      </div>
-                    )}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            );
-          })
-        )}
+              );
+            })
+          )}
+        </div>
       </div>
 
       {/* 교육과정 등록 모달 */}
