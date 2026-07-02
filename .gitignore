@@ -35,3 +35,6 @@ backend/data/
 # OS
 .DS_Store
 Thumbs.db
+
+# 브레인스토밍 시각화 목업 (임시)
+.superpowers
