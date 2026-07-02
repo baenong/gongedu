@@ -60,6 +60,47 @@ const canAccessEnrollment = (enrollment, requester) => {
   return false;
 };
 
+// 대리 등록(다른 사용자 대신 수료증 제출) 권한 확인
+// 허용되면 null, 거부되면 에러 메시지를 반환한다.
+const checkProxyEnrollmentPermission = (requester, targetUserId, courseId) => {
+  const { role, teamId, departmentId, id: requesterId } = requester;
+
+  if (role < roles["팀계담당"]) {
+    return "대리 등록 권한이 없습니다.";
+  }
+
+  if (role >= roles["총괄담당"]) return null;
+
+  if (role === roles["교육담당"]) {
+    const course = db
+      .prepare("SELECT created_by FROM courses WHERE id = ?")
+      .get(courseId);
+    if (!course || course.created_by !== requesterId) {
+      return "본인이 등록한 교육과정만 대리 등록할 수 있습니다.";
+    }
+    return null;
+  }
+
+  const target = db
+    .prepare("SELECT department_id, team_id FROM users WHERE id = ?")
+    .get(targetUserId);
+  if (!target) return "대상 사용자를 찾을 수 없습니다.";
+
+  if (role === roles["부서담당"]) {
+    return target.department_id === departmentId
+      ? null
+      : "같은 부서 소속 직원만 대리 등록할 수 있습니다.";
+  }
+
+  if (role === roles["팀계담당"]) {
+    return target.team_id === teamId
+      ? null
+      : "같은 팀 소속 직원만 대리 등록할 수 있습니다.";
+  }
+
+  return "대리 등록 권한이 없습니다.";
+};
+
 const MAGIC_BYTES = {
   ".pdf": { bytes: [0x25, 0x50, 0x44, 0x46], label: "PDF" },
   ".jpg":  { bytes: [0xff, 0xd8, 0xff],       label: "JPEG" },
@@ -116,20 +157,61 @@ const upload = multer({
   },
 });
 
-// 수료증 제출
+// 수료증 제출 (본인 제출 또는 관리자 대리 등록)
 // POST /api/enrollments/:courseId
 router.post(
   "/:courseId",
   authenticateToken,
-  upload.single("file"),
+  (req, res, next) => {
+    upload.single("file")(req, res, (err) => {
+      if (!err) return next();
+
+      if (err instanceof multer.MulterError && err.code === "LIMIT_FILE_SIZE") {
+        return res
+          .status(400)
+          .json({ message: "파일 크기는 1MB를 초과할 수 없습니다." });
+      }
+
+      return res
+        .status(400)
+        .json({ message: err.message || "파일 업로드 중 오류가 발생했습니다." });
+    });
+  },
   (req, res) => {
     if (!req.file) return res.status(400).json({ message: "파일이 없습니다." });
 
     const { courseId } = req.params;
-    const userId = req.user.id;
     const tempPath = req.file.path;
-    const deptName = req.user.department;
     const ext = path.extname(req.file.originalname).toLowerCase();
+
+    const proxyUserId = req.body.userId
+      ? parseInt(req.body.userId, 10)
+      : null;
+    const isProxy = proxyUserId !== null && proxyUserId !== req.user.id;
+
+    if (isProxy) {
+      const permissionError = checkProxyEnrollmentPermission(
+        req.user,
+        proxyUserId,
+        courseId,
+      );
+      if (permissionError) {
+        fs.unlinkSync(tempPath);
+        return res.status(403).json({ message: permissionError });
+      }
+    }
+
+    const targetUserId = isProxy ? proxyUserId : req.user.id;
+    const targetUser = db
+      .prepare("SELECT name, team, department FROM users WHERE id = ?")
+      .get(targetUserId);
+    if (!targetUser) {
+      fs.unlinkSync(tempPath);
+      return res
+        .status(404)
+        .json({ message: "대상 사용자를 찾을 수 없습니다." });
+    }
+    const deptName = targetUser.department;
 
     // 매직 바이트 + PDF JavaScript 키워드 검증
     const validation = validateUploadedFile(tempPath, ext);
@@ -148,29 +230,33 @@ router.post(
         .get(courseId);
       if (!course) throw new Error("교육과정을 찾을 수 없습니다.");
 
-      const user = db
-        .prepare("SELECT name, team FROM users WHERE id = ?")
-        .get(userId);
-
-      // 2. 표준 파일명 생성: [부서명] 교육명_팀명_이름.확장자
+      // 표준 파일명 생성: [부서명] 교육명_팀명_이름.확장자 (대상자 기준)
       // 예: [행정지원과] 개인정보보호교육_인사계_안민수.pdf
       const cleanDept = sanitizeFilename(deptName);
       const cleanCourse = sanitizeFilename(course.name);
-      const cleanTeam = sanitizeFilename(user.team);
-      const cleanName = sanitizeFilename(user.name);
+      const cleanTeam = sanitizeFilename(targetUser.team);
+      const cleanName = sanitizeFilename(targetUser.name);
 
       const finalFileName = `[${cleanDept}] ${cleanCourse}_${cleanTeam}_${cleanName}${ext}`;
       finalPath = path.join(uploadDir, finalFileName);
+
+      const existing = db
+        .prepare(
+          "SELECT id, state, stored_file_name FROM enrollments WHERE user_id = ? AND course_id = ?",
+        )
+        .get(targetUserId, courseId);
+
+      if (isProxy && existing && existing.state === 2) {
+        fs.unlinkSync(tempPath);
+        return res
+          .status(409)
+          .json({ message: "이미 제출된 건은 대리 등록할 수 없습니다." });
+      }
 
       // 만약 이미 같은 이름의 파일이 있다면 덮어쓰기
       fs.renameSync(tempPath, finalPath);
       renamedToFinal = true;
       const submittedAt = getCurrentKST();
-      const existing = db
-        .prepare(
-          "SELECT id, stored_file_name FROM enrollments WHERE user_id = ? AND course_id = ?",
-        )
-        .get(userId, courseId);
 
       if (existing) {
         if (
@@ -198,7 +284,7 @@ router.post(
         INSERT INTO enrollments (user_id, course_id, state, file_name, stored_file_name, submitted_at)
         VALUES (?, ?, 2, ?, ?, ?)
       `);
-        insert.run(userId, courseId, finalFileName, finalFileName, submittedAt);
+        insert.run(targetUserId, courseId, finalFileName, finalFileName, submittedAt);
       }
 
       res.json({ message: "수료증이 제출되었습니다." });
