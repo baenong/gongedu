@@ -81,6 +81,18 @@ app.get("/", (req, res) => {
   res.send("Gong Edu is running...");
 });
 
+// 전역 에러 핸들러 — 라우터에서 잡지 못한 에러(예: 스트리밍 도중 발생하는
+// multer 파일 크기 초과)가 기본 500 HTML 응답 대신 JSON 메시지로 나가도록 한다.
+app.use((err, req, res, next) => {
+  if (err.name === "MulterError" && err.code === "LIMIT_FILE_SIZE") {
+    return res
+      .status(400)
+      .json({ message: "파일 크기는 1MB를 초과할 수 없습니다." });
+  }
+  console.error(err);
+  res.status(500).json({ message: "서버 오류가 발생했습니다." });
+});
+
 app.listen(PORT, () => {
   console.log(`
   🚀 백엔드 서버가 실행되었습니다

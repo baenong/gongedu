@@ -249,13 +249,22 @@ const MainPage = () => {
     }
   };
 
+  // 이 교육과정의 현황을 조회할 수 있는지 (담당 범위 내 조회 — 팀계/부서담당도 포함)
   const isOwnCourse = (course: Course) => {
     const role = user?.role ?? 0;
     if (role >= roles["총괄담당"]) return true; // 총괄담당 이상 — 항상 허용
     if (role === roles["교육담당"])
       // 교육담당 — 본인 소유만
       return course.created_by === user?.id;
-    if (role >= roles["팀계담당"]) return true; // 부서담당, 팀계담당 — 항상 허용
+    if (role >= roles["팀계담당"]) return true; // 부서담당, 팀계담당 — 담당 범위 조회는 항상 허용
+    return false;
+  };
+
+  // 이 교육과정을 수정/삭제할 수 있는지 (실제 소유자만 — 팀계/부서담당은 조회만 가능하고 관리는 불가)
+  const canManageCourse = (course: Course) => {
+    const role = user?.role ?? 0;
+    if (role >= roles["총괄담당"]) return true; // 총괄담당 이상 — 항상 허용
+    if (role === roles["교육담당"]) return course.created_by === user?.id;
     return false;
   };
 
@@ -317,6 +326,40 @@ const MainPage = () => {
     fileName: string,
   ) => {
     handleMyDownload(enrollmentId, fileName); // 기존 함수 재사용
+  };
+
+  // 관리자 대리 등록 (미제출자를 대신 이수 등록)
+  const handleProxyUpload = async (
+    targetUserId: number,
+    targetName: string,
+    file: File,
+  ) => {
+    if (!selectedCourse) return;
+    if (!confirm(`${targetName}님의 이수증을 등록하시겠습니까?`)) return;
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("userId", String(targetUserId));
+
+    const uploadPromise = api
+      .post(`/enrollments/${selectedCourse.id}`, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      })
+      .then(async (res) => {
+        const statusRes = await api.get(
+          `/enrollments/course/${selectedCourse.id}`,
+        );
+        setCourseStatusList(statusRes.data);
+        fetchData();
+        return res;
+      });
+
+    toast.promise(uploadPromise, {
+      loading: "등록 중...",
+      success: "정상적으로 등록되었습니다!",
+      error: (error) =>
+        error.response?.data?.message || "등록을 실패했습니다.",
+    });
   };
 
   // ZIP 다운로드
@@ -987,7 +1030,7 @@ const MainPage = () => {
                           </button>
                         </div>
                       )}
-                      {selectedCourse && isOwnCourse(selectedCourse) && (
+                      {selectedCourse && canManageCourse(selectedCourse) && (
                         <button
                           onClick={() => handleDeleteCourse(selectedCourse.id)}
                           className="text-base bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 px-3 py-1.5 rounded hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors"
@@ -1056,6 +1099,23 @@ const MainPage = () => {
                                     </div>
                                   )}
                                 </div>
+                              ) : status.user_id !== user?.id ? (
+                                <label className="cursor-pointer text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-500 hover:underline text-base">
+                                  📎 대신 등록
+                                  <input
+                                    type="file"
+                                    accept=".pdf,.jpg,.png"
+                                    className="hidden"
+                                    onChange={(e) =>
+                                      e.target.files?.[0] &&
+                                      handleProxyUpload(
+                                        status.user_id,
+                                        status.name,
+                                        e.target.files[0],
+                                      )
+                                    }
+                                  />
+                                </label>
                               ) : (
                                 <span className="text-gray-400">-</span>
                               )}
@@ -1080,7 +1140,7 @@ const MainPage = () => {
 
             {/* 모달 하단 닫기 버튼 */}
             <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2">
-              {selectedCourse && isOwnCourse(selectedCourse) && (
+              {selectedCourse && canManageCourse(selectedCourse) && (
                 <button
                   onClick={handleUpdateCourse}
                   className="px-3 py-1 text-base bg-indigo-600 text-white rounded hover:bg-indigo-700 transition"
