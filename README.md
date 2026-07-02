@@ -18,7 +18,7 @@
   <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/Typescript-5.9.3-blue.svg" /></a>
   <img src="https://img.shields.io/badge/Node-22-339933.svg?logo=node.js&logoColor=white" />
   <a href="https://www.docker.com/"><img src="https://img.shields.io/badge/Docker-배포-2496ED.svg?logo=docker&logoColor=white" /></a>
-  <img src="https://img.shields.io/badge/version-0.9.3-orange.svg"/>
+  <img src="https://img.shields.io/badge/version-0.9.4-orange.svg"/>
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License: MIT" /></a>
 </p>
 
