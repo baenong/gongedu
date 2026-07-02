@@ -143,7 +143,12 @@ const MainPage = () => {
   // --- 사용자 기능 ---
 
   const handleFileUpload = async (courseId: number, file: File) => {
-    if (!confirm(`${file.name} 파일을 제출하시겠습니까?`)) return;
+    if (
+      !confirm(
+        `${file.name} 파일을 제출하시겠습니까?\n\n수료증 파일에는 성명 등 개인정보가 포함될 수 있으며, 제출 시 서버(VM)에 저장됩니다.\n동의하지 않으시면 취소를 눌러주세요.`,
+      )
+    )
+      return;
     const formData = new FormData();
     formData.append("file", file);
 
