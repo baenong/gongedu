@@ -37,6 +37,17 @@
       margin: 0;
     }
   }
+
+  .rainbow-dash {
+    stroke-dasharray: 12 88;
+    animation: rainbow-dash-flow 2.5s linear infinite;
+  }
+}
+
+@keyframes rainbow-dash-flow {
+  to {
+    stroke-dashoffset: -100;
+  }
 }
 
 html {

@@ -12,6 +12,7 @@ import FormButton from "../components/FormButton";
 import FormLabel from "../components/FormLabel";
 import TextInput from "../components/TextInput";
 import CalendarView from "../components/CalendarView";
+import SimpleCourseList from "../components/SimpleCourseList";
 import { groupEventsByDate, type CalendarEvent } from "../utils/calendarUtils";
 import { getErrorMessage } from "../utils/errorUtils";
 import { roles } from "../utils/constants";
@@ -48,7 +49,12 @@ const MainPage = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   const [calendarMonth, setCalendarMonth] = useState(new Date().getMonth());
-  const [isCalendarCollapsed, setIsCalendarCollapsed] = useState(true);
+  const [activeTab, setActiveTab] = useState<"calendar" | "cards">(
+    "calendar",
+  );
+  const [scrollTargetCourseId, setScrollTargetCourseId] = useState<
+    number | null
+  >(null);
 
   useEffect(() => {
     const now = new Date();
@@ -59,6 +65,15 @@ const MainPage = () => {
   const [highlightedCourseIds, setHighlightedCourseIds] = useState<Set<number>>(
     new Set(),
   );
+
+  useEffect(() => {
+    if (activeTab !== "cards" || scrollTargetCourseId === null) return;
+    courseRefs.current[scrollTargetCourseId]?.scrollIntoView({
+      behavior: "smooth",
+      block: "center",
+    });
+    setScrollTargetCourseId(null);
+  }, [activeTab, scrollTargetCourseId]);
 
   // 교육 등록 모달 상태
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -452,16 +467,18 @@ const MainPage = () => {
   const handleDateClick = (_dateKey: string, events: CalendarEvent[]) => {
     if (events.length === 0) return;
 
-    setIsCalendarCollapsed(true);
-
     const ids = events.map((e) => e.courseId);
-    courseRefs.current[ids[0]]?.scrollIntoView({
-      behavior: "smooth",
-      block: "center",
-    });
-
+    setActiveTab("cards");
+    setScrollTargetCourseId(ids[0]);
     setHighlightedCourseIds(new Set(ids));
-    setTimeout(() => setHighlightedCourseIds(new Set()), 2000);
+    setTimeout(() => setHighlightedCourseIds(new Set()), 4000);
+  };
+
+  const handleSimpleListItemClick = (courseId: number) => {
+    setActiveTab("cards");
+    setScrollTargetCourseId(courseId);
+    setHighlightedCourseIds(new Set([courseId]));
+    setTimeout(() => setHighlightedCourseIds(new Set()), 4000);
   };
 
   return (
@@ -469,6 +486,28 @@ const MainPage = () => {
       {/* 상단 컨트롤 바 */}
       <div className="flex-shrink-0 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
         <div className="flex items-center gap-4">
+          <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-700 rounded-md p-1 flex-shrink-0">
+            <button
+              onClick={() => setActiveTab("calendar")}
+              className={`px-3 py-1.5 rounded text-base font-medium transition ${
+                activeTab === "calendar"
+                  ? "bg-white dark:bg-gray-900 text-indigo-600 dark:text-indigo-300 shadow"
+                  : "text-gray-600 dark:text-gray-300"
+              }`}
+            >
+              📅 캘린더
+            </button>
+            <button
+              onClick={() => setActiveTab("cards")}
+              className={`px-3 py-1.5 rounded text-base font-medium transition ${
+                activeTab === "cards"
+                  ? "bg-white dark:bg-gray-900 text-indigo-600 dark:text-indigo-300 shadow"
+                  : "text-gray-600 dark:text-gray-300"
+              }`}
+            >
+              📋 교육목록
+            </button>
+          </div>
           <div className="flex items-center gap-2">
             <span className="font-semibold text-gray-700 dark:text-gray-200">
               조회 연도 :
@@ -516,19 +555,23 @@ const MainPage = () => {
         )}
       </div>
 
-      <div className="flex-1 min-h-0 flex flex-col lg:flex-row gap-4">
-        <CalendarView
-          year={year}
-          month={calendarMonth}
-          onMonthChange={handleCalendarMonthChange}
-          eventsByDate={calendarEventsByDate}
-          onDateClick={handleDateClick}
-          isCollapsed={isCalendarCollapsed}
-          onToggleCollapsed={() => setIsCalendarCollapsed((c) => !c)}
-        />
-
-        {/* 교육과정 목록 (카드 리스트) */}
-        <div className="flex-1 lg:min-w-[364px] min-h-0 overflow-y-auto scrollbar-hide grid gap-6 grid-cols-1 min-[700px]:grid-cols-2 lg:grid-cols-1 content-start px-5 pb-2">
+      {activeTab === "calendar" ? (
+        <div className="flex-1 min-h-0 flex flex-col lg:flex-row gap-4">
+          <CalendarView
+            year={year}
+            month={calendarMonth}
+            onMonthChange={handleCalendarMonthChange}
+            eventsByDate={calendarEventsByDate}
+            onDateClick={handleDateClick}
+          />
+          <SimpleCourseList
+            courses={filteredCourses}
+            getEnrollment={getMyEnrollment}
+            onCourseClick={handleSimpleListItemClick}
+          />
+        </div>
+      ) : (
+        <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide grid gap-6 grid-cols-1 min-[870px]:grid-cols-2 content-start px-5 pt-3 pb-2">
           {isLoading ? (
             <div className="col-span-full text-center py-10 text-gray-500">
               로딩 중...
@@ -566,7 +609,7 @@ const MainPage = () => {
                   ref={(el) => {
                     courseRefs.current[course.id] = el;
                   }}
-                  className={`relative bg-white dark:bg-gray-800 rounded-lg shadow border-l-4 p-5
+                  className={`relative min-w-[360px] bg-white dark:bg-gray-800 rounded-lg shadow border-l-4 p-5
                   transition-all duration-300 ease-in-out hover:scale-[1.02] hover:shadow-xl hover:z-10
                   dark:hover:shadow-cyan-500/50
                   ${
@@ -580,10 +623,39 @@ const MainPage = () => {
                             ? "border-sky-400"
                             : "border-orange-500"
                   }
-                  ${highlightedCourseIds.has(course.id) ? "ring-4 ring-yellow-400 dark:ring-orange-500/60" : ""}
                   cursor-pointer`}
                   onClick={() => openDetailModal(course)}
                 >
+                  {highlightedCourseIds.has(course.id) && (
+                    <svg
+                      className="pointer-events-none absolute inset-0 w-full h-full"
+                      aria-hidden="true"
+                    >
+                      <defs>
+                        <linearGradient id={`rainbow-gradient-${course.id}`}>
+                          <stop offset="0%" stopColor="#ef4444" />
+                          <stop offset="20%" stopColor="#f97316" />
+                          <stop offset="40%" stopColor="#eab308" />
+                          <stop offset="60%" stopColor="#22c55e" />
+                          <stop offset="80%" stopColor="#3b82f6" />
+                          <stop offset="100%" stopColor="#8b5cf6" />
+                        </linearGradient>
+                      </defs>
+                      <rect
+                        x="1"
+                        y="1"
+                        width="calc(100% - 2px)"
+                        height="calc(100% - 2px)"
+                        rx="8"
+                        fill="none"
+                        stroke={`url(#rainbow-gradient-${course.id})`}
+                        strokeWidth="3"
+                        strokeLinecap="round"
+                        pathLength={100}
+                        className="rainbow-dash"
+                      />
+                    </svg>
+                  )}
                   <div className="flex justify-between items-start mb-3">
                     <div>
                       <h3
@@ -710,7 +782,7 @@ const MainPage = () => {
             })
           )}
         </div>
-      </div>
+      )}
 
       {/* 교육과정 등록 모달 */}
       {showCreateModal && (
