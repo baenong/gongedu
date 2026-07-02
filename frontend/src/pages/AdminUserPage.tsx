@@ -268,7 +268,7 @@ const AdminUserPage = () => {
   const handleDownloadTemplate = () => {
     // 엑셀에서 한글 깨짐 방지를 위해 BOM(\uFEFF) 추가
     const csvContent =
-      "\uFEFFid,name,department,departmentId,team,teamId\nA0000000,홍길동,총무과,1,총무계,1\nB0000000,김철수,총무과,2,인사계,2";
+      "\uFEFFid,name,department,team\nA0000000,홍길동,총무과,총무계\nB0000000,김철수,총무과,인사계";
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
