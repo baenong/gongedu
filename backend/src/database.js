@@ -140,7 +140,7 @@ export function initDatabase() {
   if (!ipCheck) {
     db.prepare("INSERT INTO settings (key, value) VALUES (?, ?)").run(
       "allowed_ip_range",
-      "127.0.0.1",
+      "",
     );
   }
 

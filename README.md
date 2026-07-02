@@ -241,6 +241,40 @@ docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
 
 ---
 
+### 같은 서버에 다른 프로젝트도 함께 운영하는 경우
+
+한 서버(VM)에 gongedu 외 다른 프로젝트도 함께 띄워서 80번 포트를 gongedu가 독점할 수 없는 경우에만 아래처럼 변경하세요. **단독으로 운영한다면 이 섹션은 건너뛰고 기본 설정 그대로 사용하면 됩니다.**
+
+1. **`docker-compose.yml`에서 포트를 내부 전용으로 변경**합니다. 서버의 다른 nginx(또는 다른 리버스 프록시)가 도메인·경로 기준으로 각 프로젝트에 트래픽을 나눠주도록 합니다.
+
+   ```yaml
+   frontend:
+     ports:
+       - "127.0.0.1:8081:80"   # 예시. 원하는 내부 포트로 변경
+   ```
+
+2. **`frontend/nginx.conf`에서 클라이언트 IP 전달 방식을 수정**합니다. gongedu는 총괄관리자(`geadmin`) 로컬 전용 로그인 제한과 IP 대역 화이트리스트 기능이 실제 접속자 IP에 의존합니다. 앞단에 nginx가 하나 더 있으면 컨테이너 nginx 입장에선 접속자가 항상 앞단 nginx로 보이므로, 아래처럼 앞단이 전달한 IP를 그대로 이어받도록 고쳐야 합니다. 그렇지 않으면 두 기능 모두 무력화됩니다.
+
+   ```nginx
+   location /api/ {
+       proxy_pass http://backend:8180/api/;
+       proxy_set_header Host $host;
+       proxy_set_header X-Real-IP $proxy_add_x_forwarded_for;
+       proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+       proxy_set_header X-Forwarded-Proto $scheme;
+   }
+   ```
+
+   소스를 수정했으므로 반드시 **직접 빌드 방식**으로 배포해야 합니다.
+
+   ```bash
+   docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+   ```
+
+3. **서버의 앞단 nginx(또는 다른 리버스 프록시)**가 위에서 지정한 내부 포트(예: 8081)로 요청을 넘기도록 설정합니다. 이때 `proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;`처럼 원본 클라이언트 IP를 전달하는 헤더를 반드시 넣어주세요 (2번과 짝을 이루는 설정입니다). 구체적인 설정 방식은 운영 환경에 따라 다르므로 각자의 nginx/리버스 프록시 문서를 참고하세요.
+
+---
+
 ### 최초 접속 및 계정 설정
 
 서버 실행 후 아래 계정으로 로그인합니다.
