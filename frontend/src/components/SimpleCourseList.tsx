@@ -3,6 +3,7 @@ import {
   classifyCourseStatus,
   type CourseStatus,
 } from "../utils/calendarUtils";
+import { formatShortDate } from "../utils/dateUtils";
 
 interface SimpleCourseListProps {
   courses: Course[];
@@ -46,9 +47,13 @@ const SimpleCourseList = ({
                   <span
                     className={`inline-block w-2.5 h-2.5 rounded-full flex-shrink-0 ${STATUS_DOT_COLOR[status]}`}
                   />
-                  <span className="truncate">
-                    {course.name} ({course.end_date})
+                  <span className="shrink-0 tabular-nums text-gray-500 dark:text-gray-400">
+                    ({formatShortDate(course.end_date)})
                   </span>
+                  <span className="shrink-0 text-gray-300 dark:text-gray-600">
+                    |
+                  </span>
+                  <span className="truncate">{course.name}</span>
                 </button>
               </li>
             );

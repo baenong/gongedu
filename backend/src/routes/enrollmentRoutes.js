@@ -2,6 +2,8 @@ import express from "express";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import crypto from "crypto";
+import contentDisposition from "content-disposition";
 import { fileURLToPath } from "url";
 import archiver from "archiver";
 import db from "../database.js";
@@ -10,6 +12,10 @@ import {
   requireAdmin,
 } from "../middlewares/authMiddleware.js";
 import { getFormattedTime, getCurrentKST } from "../utils/formatHelper.js";
+import {
+  sanitizeFilename,
+  buildDisplayFileName,
+} from "../utils/enrollmentFileName.js";
 import { roles } from "../../constants.js";
 
 const router = express.Router();
@@ -20,13 +26,6 @@ const uploadDir = path.join(__dirname, "../../uploads");
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
-
-// 파일명에서 특수문자 제거
-const sanitizeFilename = (name) => {
-  return String(name)
-    .replace(/[\\/:*?"<>|]/g, "")
-    .trim();
-};
 
 // 수료증 접근 권한 확인
 // enrollment: { user_id, course_id }
@@ -106,6 +105,13 @@ const MAGIC_BYTES = {
   ".jpg":  { bytes: [0xff, 0xd8, 0xff],       label: "JPEG" },
   ".jpeg": { bytes: [0xff, 0xd8, 0xff],       label: "JPEG" },
   ".png":  { bytes: [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a], label: "PNG" },
+};
+
+const MIME_TYPES = {
+  ".pdf": "application/pdf",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".png": "image/png",
 };
 
 // PDF에서 JavaScript 실행에 사용되는 딕셔너리 키 패턴
@@ -211,7 +217,6 @@ router.post(
         .status(404)
         .json({ message: "대상 사용자를 찾을 수 없습니다." });
     }
-    const deptName = targetUser.department;
 
     // 매직 바이트 + PDF JavaScript 키워드 검증
     const validation = validateUploadedFile(tempPath, ext);
@@ -230,14 +235,10 @@ router.post(
         .get(courseId);
       if (!course) throw new Error("교육과정을 찾을 수 없습니다.");
 
-      // 표준 파일명 생성: [부서명] 교육명_팀명_이름.확장자 (대상자 기준)
-      // 예: [행정지원과] 개인정보보호교육_인사계_안민수.pdf
-      const cleanDept = sanitizeFilename(deptName);
-      const cleanCourse = sanitizeFilename(course.name);
-      const cleanTeam = sanitizeFilename(targetUser.team);
-      const cleanName = sanitizeFilename(targetUser.name);
-
-      const finalFileName = `[${cleanDept}] ${cleanCourse}_${cleanTeam}_${cleanName}${ext}`;
+      // 디스크에는 개인정보가 드러나지 않는 opaque 파일명으로 저장한다.
+      // 부서/팀/이름이 반영된 "보기 좋은" 파일명은 조회·다운로드 시점에 동적으로 만든다
+      // (부서 이동 등으로 소속이 바뀐 뒤에도 항상 최신 값을 보여주기 위함).
+      const finalFileName = `${crypto.randomUUID()}${ext}`;
       finalPath = path.join(uploadDir, finalFileName);
 
       const existing = db
@@ -311,7 +312,7 @@ router.get(
 
       let query = `
       SELECT c.id as course_id, c.name as course_name, c.end_date,
-             e.state, e.submitted_at, e.file_name
+             e.state, e.submitted_at, e.file_name, e.stored_file_name
       FROM courses c
       LEFT JOIN enrollments e ON c.id = e.course_id AND e.user_id = ?
     `;
@@ -330,7 +331,27 @@ router.get(
       query += ` ORDER BY c.end_date ASC`;
 
       const status = db.prepare(query).all(...params);
-      res.json(status);
+
+      const owner = db
+        .prepare("SELECT name, department, team FROM users WHERE id = ?")
+        .get(userId);
+
+      const enriched = status.map(({ stored_file_name, ...row }) => {
+        if (row.state !== 2 || !stored_file_name || !owner) return row;
+        const ext = path.extname(stored_file_name);
+        return {
+          ...row,
+          file_name: buildDisplayFileName({
+            department: owner.department,
+            team: owner.team,
+            name: owner.name,
+            courseName: row.course_name,
+            ext,
+          }),
+        };
+      });
+
+      res.json(enriched);
     } catch (error) {
       console.error(error);
       res.status(500).json({ message: "서버 오류가 발생했습니다." });
@@ -452,11 +473,30 @@ router.get("/course/:courseId/download-zip", authenticateToken, (req, res) => {
     });
     archive.pipe(res);
 
+    const usedNames = new Set();
     files.forEach((file) => {
       const filePath = path.join(uploadDir, file.stored_file_name);
       if (fs.existsSync(filePath)) {
-        // 이미 파일명이 표준화되어 있으므로 그대로 압축
-        archive.file(filePath, { name: file.stored_file_name });
+        // ZIP 안의 파일명은 다운로드 시점의 현재 소속 기준으로 매번 새로 만든다.
+        const ext = path.extname(file.stored_file_name);
+        let displayName = buildDisplayFileName({
+          department: file.department,
+          team: file.team,
+          name: file.user_name,
+          courseName: course.name,
+          ext,
+        });
+
+        // 같은 부서/팀 안에 동명이인이 있으면 파일명이 충돌할 수 있으므로 접미사를 붙인다.
+        if (usedNames.has(displayName)) {
+          const base = displayName.slice(0, -ext.length);
+          let suffix = 2;
+          while (usedNames.has(`${base}_${suffix}${ext}`)) suffix++;
+          displayName = `${base}_${suffix}${ext}`;
+        }
+        usedNames.add(displayName);
+
+        archive.file(filePath, { name: displayName });
       }
     });
 
@@ -479,11 +519,29 @@ router.get("/my/:courseId", authenticateToken, (req, res) => {
         `
         SELECT e.id as enrollment_id, e.state, e.submitted_at, e.file_name, e.stored_file_name
         FROM enrollments e
-        WHERE e.course_id = ? AND e.user_id = ? 
+        WHERE e.course_id = ? AND e.user_id = ?
       `,
       )
 
       .get(courseId, userId);
+
+    if (myEnrollment && myEnrollment.state === 2 && myEnrollment.stored_file_name) {
+      const owner = db
+        .prepare("SELECT name, department, team FROM users WHERE id = ?")
+        .get(userId);
+      const course = db.prepare("SELECT name FROM courses WHERE id = ?").get(courseId);
+      const ext = path.extname(myEnrollment.stored_file_name);
+      myEnrollment.file_name = buildDisplayFileName({
+        department: owner.department,
+        team: owner.team,
+        name: owner.name,
+        courseName: course?.name ?? "",
+        ext,
+      });
+    }
+
+    if (myEnrollment) delete myEnrollment.stored_file_name;
+
     res.json(myEnrollment);
   } catch (error) {
     console.error(error);
@@ -499,14 +557,34 @@ router.get("/my", authenticateToken, (req, res) => {
     const myEnrollments = db
       .prepare(
         `
-      SELECT e.*, c.name as course_name, c.end_date 
+      SELECT e.*, c.name as course_name, c.end_date
       FROM enrollments e
       JOIN courses c ON e.course_id = c.id
       WHERE e.user_id = ?
       `,
       )
       .all(userId);
-    res.json(myEnrollments);
+
+    const owner = db
+      .prepare("SELECT name, department, team FROM users WHERE id = ?")
+      .get(userId);
+
+    const enriched = myEnrollments.map(({ stored_file_name, ...row }) => {
+      if (row.state !== 2 || !stored_file_name || !owner) return row;
+      const ext = path.extname(stored_file_name);
+      return {
+        ...row,
+        file_name: buildDisplayFileName({
+          department: owner.department,
+          team: owner.team,
+          name: owner.name,
+          courseName: row.course_name,
+          ext,
+        }),
+      };
+    });
+
+    res.json(enriched);
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "서버 오류가 발생했습니다." });
@@ -558,7 +636,24 @@ router.get("/course/:courseId", authenticateToken, (req, res) => {
 
     query += ` ORDER BY u.department, u.team, u.name`;
     const status = db.prepare(query).all(...params);
-    res.json(status);
+
+    const course = db.prepare("SELECT name FROM courses WHERE id = ?").get(courseId);
+    const enriched = status.map(({ stored_file_name, ...row }) => {
+      if (row.state !== 2 || !stored_file_name) return row;
+      const ext = path.extname(stored_file_name);
+      return {
+        ...row,
+        file_name: buildDisplayFileName({
+          department: row.department,
+          team: row.team,
+          name: row.name,
+          courseName: course?.name ?? "",
+          ext,
+        }),
+      };
+    });
+
+    res.json(enriched);
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "서버 오류가 발생했습니다." });
@@ -591,7 +686,37 @@ router.get("/:id/download", authenticateToken, (req, res) => {
         .json({ message: "DB에서 파일을 찾을 수 없습니다." });
     }
 
-    res.download(filePath, path.basename(enrollment.stored_file_name));
+    // 다운로드 시점의 현재 소속 정보로 파일명을 새로 조합한다.
+    const owner = db
+      .prepare(
+        `SELECT u.name, u.department, u.team, c.name as course_name
+         FROM enrollments e
+         JOIN users u ON e.user_id = u.id
+         JOIN courses c ON e.course_id = c.id
+         WHERE e.id = ?`,
+      )
+      .get(id);
+
+    const ext = path.extname(enrollment.stored_file_name);
+    const displayFileName = owner
+      ? buildDisplayFileName({
+          department: owner.department,
+          team: owner.team,
+          name: owner.name,
+          courseName: owner.course_name,
+          ext,
+        })
+      : path.basename(enrollment.stored_file_name);
+
+    // Express의 res.download()/res.sendFile()은 내부적으로 send 모듈이 경로를
+    // 재해석하는데, 특정 환경(예: 경로에 '+' 문자가 포함된 경우)에서 존재하는
+    // 파일도 못 찾는 것으로 오판하는 문제가 있어 직접 스트리밍한다.
+    res.setHeader(
+      "Content-Type",
+      MIME_TYPES[ext] || "application/octet-stream",
+    );
+    res.setHeader("Content-Disposition", contentDisposition(displayFileName));
+    fs.createReadStream(filePath).pipe(res);
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "서버 오류가 발생했습니다." });

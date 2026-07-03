@@ -22,6 +22,13 @@ const STATUS_COLOR: Record<CalendarEvent["status"], string> = {
 
 const WEEKDAY_LABELS = ["일", "월", "화", "수", "목", "금", "토"];
 
+// 인덱스 0 = 일요일, 6 = 토요일. 다크모드에서 채도 높은 원색은 눈에 잘 안 띄어
+// 400번대의 파스텔에 가까운 톤을 사용한다.
+const WEEKEND_TEXT_COLOR: Record<number, string> = {
+  0: "text-red-500 dark:text-red-400",
+  6: "text-blue-500 dark:text-blue-400",
+};
+
 const CalendarView = ({
   year,
   month,
@@ -42,7 +49,7 @@ const CalendarView = ({
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-4 lg:basis-[48rem] lg:min-w-[34rem] lg:shrink">
+    <div className="shrink-0 lg:shrink bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-4 lg:basis-[48rem] lg:min-w-[34rem]">
       <div className="flex items-center justify-between mb-3">
         <button
           onClick={goPrevMonth}
@@ -63,9 +70,16 @@ const CalendarView = ({
         </button>
       </div>
 
-      <div className="grid grid-cols-7 text-center text-sm text-gray-500 dark:text-gray-400 mb-1">
-        {WEEKDAY_LABELS.map((label) => (
-          <div key={label}>{label}</div>
+      <div className="grid grid-cols-7 text-center text-sm mb-1">
+        {WEEKDAY_LABELS.map((label, index) => (
+          <div
+            key={label}
+            className={
+              WEEKEND_TEXT_COLOR[index] ?? "text-gray-500 dark:text-gray-400"
+            }
+          >
+            {label}
+          </div>
         ))}
       </div>
 
@@ -75,6 +89,7 @@ const CalendarView = ({
           const events = eventsByDate.get(dateKey) ?? [];
           const isCurrentMonth = date.getMonth() === month;
           const { base, md, lg } = overflowCounts(events.length);
+          const dayOfWeek = date.getDay();
 
           return (
             <div
@@ -82,13 +97,17 @@ const CalendarView = ({
               onClick={() =>
                 events.length > 0 && onDateClick(dateKey, events)
               }
-              className={`h-24 border border-gray-100 dark:border-gray-700 rounded p-1 text-xs overflow-hidden ${
+              className={`h-18 lg:h-24 border border-gray-100 dark:border-gray-700 rounded p-1 text-xs overflow-hidden ${
                 isCurrentMonth
                   ? "bg-white dark:bg-gray-800"
                   : "bg-gray-50 dark:bg-gray-900 text-gray-400 dark:text-gray-600"
               } ${events.length > 0 ? "cursor-pointer" : ""}`}
             >
-              <div className="font-semibold mb-1">{date.getDate()}</div>
+              <div
+                className={`font-semibold mb-1 ${isCurrentMonth ? WEEKEND_TEXT_COLOR[dayOfWeek] ?? "" : ""}`}
+              >
+                {date.getDate()}
+              </div>
 
               {events.map((event, index) => (
                 <div
