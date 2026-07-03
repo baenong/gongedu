@@ -584,7 +584,29 @@ router.get("/:id/download", authenticateToken, (req, res) => {
         .json({ message: "DB에서 파일을 찾을 수 없습니다." });
     }
 
-    res.download(filePath, path.basename(enrollment.stored_file_name));
+    // 다운로드 시점의 현재 소속 정보로 파일명을 새로 조합한다.
+    const owner = db
+      .prepare(
+        `SELECT u.name, u.department, u.team, c.name as course_name
+         FROM enrollments e
+         JOIN users u ON e.user_id = u.id
+         JOIN courses c ON e.course_id = c.id
+         WHERE e.id = ?`,
+      )
+      .get(id);
+
+    const ext = path.extname(enrollment.stored_file_name);
+    const displayFileName = owner
+      ? buildDisplayFileName({
+          department: owner.department,
+          team: owner.team,
+          name: owner.name,
+          courseName: owner.course_name,
+          ext,
+        })
+      : path.basename(enrollment.stored_file_name);
+
+    res.download(filePath, displayFileName);
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "서버 오류가 발생했습니다." });
