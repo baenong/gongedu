@@ -25,6 +25,9 @@ backend/backup/
 # SQLite 데이터베이스
 backend/data/
 
+# 로컬 테스트용 더미 데이터 (worktree 테스트 시 수동 복사해서 사용)
+backend/.test-data/
+
 # 에디터
 .vscode/*
 !.vscode/extensions.json
