@@ -10,6 +10,10 @@ import {
   requireAdmin,
 } from "../middlewares/authMiddleware.js";
 import { getFormattedTime, getCurrentKST } from "../utils/formatHelper.js";
+import {
+  sanitizeFilename,
+  buildDisplayFileName,
+} from "../utils/enrollmentFileName.js";
 import { roles } from "../../constants.js";
 
 const router = express.Router();
@@ -20,13 +24,6 @@ const uploadDir = path.join(__dirname, "../../uploads");
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
-
-// 파일명에서 특수문자 제거
-const sanitizeFilename = (name) => {
-  return String(name)
-    .replace(/[\\/:*?"<>|]/g, "")
-    .trim();
-};
 
 // 수료증 접근 권한 확인
 // enrollment: { user_id, course_id }
