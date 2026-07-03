@@ -1,8 +1,6 @@
 import Database from "better-sqlite3";
 import bcrypt from "bcryptjs";
 import path from "path";
-import fs from "fs";
-import crypto from "crypto";
 import { fileURLToPath } from "url";
 import { roles } from "../constants.js";
 
@@ -150,48 +148,7 @@ export function initDatabase() {
 }
 
 function migrateDatabase() {
-  migrateEnrollmentFileNaming();
-}
-
-// 기존에 "[부서] 교육명_팀_이름.ext" 형태로 저장된 수료증 파일을
-// 개인정보가 없는 opaque(UUID) 파일명으로 1회 전환한다.
-function migrateEnrollmentFileNaming() {
-  const FLAG_KEY = "enrollment_file_naming_migrated";
-  const done = db.prepare("SELECT value FROM settings WHERE key = ?").get(FLAG_KEY);
-  if (done) return;
-
-  const uploadDir = path.join(__dirname, "../uploads");
-  const rows = db
-    .prepare(
-      "SELECT id, stored_file_name FROM enrollments WHERE stored_file_name IS NOT NULL",
-    )
-    .all();
-
-  const update = db.prepare(
-    "UPDATE enrollments SET stored_file_name = ?, file_name = ? WHERE id = ?",
-  );
-
-  let migratedCount = 0;
-  for (const row of rows) {
-    const oldPath = path.join(uploadDir, row.stored_file_name);
-    if (!fs.existsSync(oldPath)) continue;
-
-    const ext = path.extname(row.stored_file_name);
-    const newName = `${crypto.randomUUID()}${ext}`;
-    const newPath = path.join(uploadDir, newName);
-
-    fs.renameSync(oldPath, newPath);
-    update.run(newName, newName, row.id);
-    migratedCount++;
-  }
-
-  db.prepare(
-    "INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
-  ).run(FLAG_KEY, String(migratedCount));
-
-  console.log(
-    `📦 기존 수료증 파일명 마이그레이션 완료: ${migratedCount}건을 opaque 파일명으로 전환했습니다.`,
-  );
+  // DB를 마이그레이션해야할 경우 여기에 추가
 }
 
 export default db;
