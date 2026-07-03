@@ -2,6 +2,7 @@ import express from "express";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import crypto from "crypto";
 import { fileURLToPath } from "url";
 import archiver from "archiver";
 import db from "../database.js";
@@ -208,7 +209,6 @@ router.post(
         .status(404)
         .json({ message: "대상 사용자를 찾을 수 없습니다." });
     }
-    const deptName = targetUser.department;
 
     // 매직 바이트 + PDF JavaScript 키워드 검증
     const validation = validateUploadedFile(tempPath, ext);
@@ -227,14 +227,10 @@ router.post(
         .get(courseId);
       if (!course) throw new Error("교육과정을 찾을 수 없습니다.");
 
-      // 표준 파일명 생성: [부서명] 교육명_팀명_이름.확장자 (대상자 기준)
-      // 예: [행정지원과] 개인정보보호교육_인사계_안민수.pdf
-      const cleanDept = sanitizeFilename(deptName);
-      const cleanCourse = sanitizeFilename(course.name);
-      const cleanTeam = sanitizeFilename(targetUser.team);
-      const cleanName = sanitizeFilename(targetUser.name);
-
-      const finalFileName = `[${cleanDept}] ${cleanCourse}_${cleanTeam}_${cleanName}${ext}`;
+      // 디스크에는 개인정보가 드러나지 않는 opaque 파일명으로 저장한다.
+      // 부서/팀/이름이 반영된 "보기 좋은" 파일명은 조회·다운로드 시점에 동적으로 만든다
+      // (부서 이동 등으로 소속이 바뀐 뒤에도 항상 최신 값을 보여주기 위함).
+      const finalFileName = `${crypto.randomUUID()}${ext}`;
       finalPath = path.join(uploadDir, finalFileName);
 
       const existing = db
