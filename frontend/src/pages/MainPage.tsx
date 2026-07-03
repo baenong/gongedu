@@ -1100,7 +1100,7 @@ const MainPage = () => {
                                   )}
                                 </div>
                               ) : status.user_id !== user?.id ? (
-                                <label className="cursor-pointer text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-500 hover:underline text-base">
+                                <label className="inline-block cursor-pointer text-base text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300 bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 px-3 py-1 rounded transition">
                                   📎 대신 등록
                                   <input
                                     type="file"
