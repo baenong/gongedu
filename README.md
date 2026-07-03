@@ -279,6 +279,22 @@ docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
 
 ---
 
+### Docker 없이 직접 설치하는 경우
+
+Docker 없이 backend는 pm2로, frontend는 nginx 등으로 직접 정적 서빙하는 방식도 가능합니다. 이 경우 최초 설정 시 backend를 pm2로 기동하면서 이름을 `gongedu-backend`로 지정해두세요.
+
+```bash
+cd backend && pm2 start src/index.js --name gongedu-backend
+```
+
+이후 업데이트는 `update_direct.sh`로 진행합니다 (`git pull` → backend `npm ci` + `pm2 restart` → frontend `npm ci` + 빌드).
+
+```bash
+./update_direct.sh
+```
+
+---
+
 ### 최초 접속 및 계정 설정
 
 서버 실행 후 아래 계정으로 로그인합니다.
