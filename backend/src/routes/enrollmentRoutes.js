@@ -445,11 +445,30 @@ router.get("/course/:courseId/download-zip", authenticateToken, (req, res) => {
     });
     archive.pipe(res);
 
+    const usedNames = new Set();
     files.forEach((file) => {
       const filePath = path.join(uploadDir, file.stored_file_name);
       if (fs.existsSync(filePath)) {
-        // 이미 파일명이 표준화되어 있으므로 그대로 압축
-        archive.file(filePath, { name: file.stored_file_name });
+        // ZIP 안의 파일명은 다운로드 시점의 현재 소속 기준으로 매번 새로 만든다.
+        const ext = path.extname(file.stored_file_name);
+        let displayName = buildDisplayFileName({
+          department: file.department,
+          team: file.team,
+          name: file.user_name,
+          courseName: course.name,
+          ext,
+        });
+
+        // 같은 부서/팀 안에 동명이인이 있으면 파일명이 충돌할 수 있으므로 접미사를 붙인다.
+        if (usedNames.has(displayName)) {
+          const base = displayName.slice(0, -ext.length);
+          let suffix = 2;
+          while (usedNames.has(`${base}_${suffix}${ext}`)) suffix++;
+          displayName = `${base}_${suffix}${ext}`;
+        }
+        usedNames.add(displayName);
+
+        archive.file(filePath, { name: displayName });
       }
     });
 
