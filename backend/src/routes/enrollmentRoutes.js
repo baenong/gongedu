@@ -336,9 +336,9 @@ router.get(
         .prepare("SELECT name, department, team FROM users WHERE id = ?")
         .get(userId);
 
-      const enriched = status.map((row) => {
-        if (row.state !== 2 || !row.stored_file_name || !owner) return row;
-        const ext = path.extname(row.stored_file_name);
+      const enriched = status.map(({ stored_file_name, ...row }) => {
+        if (row.state !== 2 || !stored_file_name || !owner) return row;
+        const ext = path.extname(stored_file_name);
         return {
           ...row,
           file_name: buildDisplayFileName({
@@ -540,6 +540,8 @@ router.get("/my/:courseId", authenticateToken, (req, res) => {
       });
     }
 
+    if (myEnrollment) delete myEnrollment.stored_file_name;
+
     res.json(myEnrollment);
   } catch (error) {
     console.error(error);
@@ -567,9 +569,9 @@ router.get("/my", authenticateToken, (req, res) => {
       .prepare("SELECT name, department, team FROM users WHERE id = ?")
       .get(userId);
 
-    const enriched = myEnrollments.map((row) => {
-      if (row.state !== 2 || !row.stored_file_name || !owner) return row;
-      const ext = path.extname(row.stored_file_name);
+    const enriched = myEnrollments.map(({ stored_file_name, ...row }) => {
+      if (row.state !== 2 || !stored_file_name || !owner) return row;
+      const ext = path.extname(stored_file_name);
       return {
         ...row,
         file_name: buildDisplayFileName({
@@ -636,9 +638,9 @@ router.get("/course/:courseId", authenticateToken, (req, res) => {
     const status = db.prepare(query).all(...params);
 
     const course = db.prepare("SELECT name FROM courses WHERE id = ?").get(courseId);
-    const enriched = status.map((row) => {
-      if (row.state !== 2 || !row.stored_file_name) return row;
-      const ext = path.extname(row.stored_file_name);
+    const enriched = status.map(({ stored_file_name, ...row }) => {
+      if (row.state !== 2 || !stored_file_name) return row;
+      const ext = path.extname(stored_file_name);
       return {
         ...row,
         file_name: buildDisplayFileName({
