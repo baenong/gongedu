@@ -528,11 +528,11 @@ const MainPage = () => {
     <div className="h-full flex flex-col gap-6">
       {/* 상단 컨트롤 바 */}
       <div className="flex-shrink-0 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-700 rounded-md p-1 flex-shrink-0">
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-700 rounded-md p-1 shrink-0">
             <button
               onClick={() => setActiveTab("calendar")}
-              className={`px-3 py-1.5 rounded text-base font-medium transition ${
+              className={`px-3 py-1.5 rounded text-base font-medium transition whitespace-nowrap ${
                 activeTab === "calendar"
                   ? "bg-white dark:bg-gray-900 text-indigo-600 dark:text-indigo-300 shadow"
                   : "text-gray-600 dark:text-gray-300"
@@ -542,7 +542,7 @@ const MainPage = () => {
             </button>
             <button
               onClick={() => setActiveTab("cards")}
-              className={`px-3 py-1.5 rounded text-base font-medium transition ${
+              className={`px-3 py-1.5 rounded text-base font-medium transition whitespace-nowrap ${
                 activeTab === "cards"
                   ? "bg-white dark:bg-gray-900 text-indigo-600 dark:text-indigo-300 shadow"
                   : "text-gray-600 dark:text-gray-300"
@@ -551,8 +551,8 @@ const MainPage = () => {
               📋 교육목록
             </button>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="font-semibold text-gray-700 dark:text-gray-200">
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="font-semibold text-gray-700 dark:text-gray-200 whitespace-nowrap">
               조회 연도 :
             </span>
             <Select
@@ -562,26 +562,26 @@ const MainPage = () => {
               className="w-28"
             />
           </div>
-          <label className="flex items-center gap-2 cursor-pointer select-none">
+          <label className="flex items-center gap-2 cursor-pointer select-none shrink-0">
             <input
               type="checkbox"
               checked={showUnfinishedOnly}
               onChange={(e) => setShowUnfinishedOnly(e.target.checked)}
               className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
             />
-            <span className="text-base text-gray-600 dark:text-gray-300">
+            <span className="text-base text-gray-600 dark:text-gray-300 whitespace-nowrap">
               {isManager ? "미완료 교육만 보기" : "미제출 건만 보기"}
             </span>
           </label>
           {user?.role === roles["교육담당"] && (
-            <label className="flex items-center gap-2 cursor-pointer select-none">
+            <label className="flex items-center gap-2 cursor-pointer select-none shrink-0">
               <input
                 type="checkbox"
                 checked={showOwnCoursesOnly}
                 onChange={(e) => setShowOwnCoursesOnly(e.target.checked)}
                 className="w-4 h-4 text-sky-500 rounded focus:ring-sky-400"
               />
-              <span className="text-base text-gray-600 dark:text-gray-300">
+              <span className="text-base text-gray-600 dark:text-gray-300 whitespace-nowrap">
                 내가 등록한 교육만 보기
               </span>
             </label>
