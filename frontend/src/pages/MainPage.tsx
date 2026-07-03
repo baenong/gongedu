@@ -49,9 +49,7 @@ const MainPage = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   const [calendarMonth, setCalendarMonth] = useState(new Date().getMonth());
-  const [activeTab, setActiveTab] = useState<"calendar" | "cards">(
-    "calendar",
-  );
+  const [activeTab, setActiveTab] = useState<"calendar" | "cards">("calendar");
   const [scrollTargetCourseId, setScrollTargetCourseId] = useState<
     number | null
   >(null);
@@ -357,8 +355,7 @@ const MainPage = () => {
     toast.promise(uploadPromise, {
       loading: "등록 중...",
       success: "정상적으로 등록되었습니다!",
-      error: (error) =>
-        error.response?.data?.message || "등록을 실패했습니다.",
+      error: (error) => error.response?.data?.message || "등록을 실패했습니다.",
     });
   };
 
@@ -527,7 +524,7 @@ const MainPage = () => {
   return (
     <div className="h-full flex flex-col gap-6">
       {/* 상단 컨트롤 바 */}
-      <div className="flex-shrink-0 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+      <div className="shrink-0 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-700 rounded-md p-1 shrink-0">
             <button
