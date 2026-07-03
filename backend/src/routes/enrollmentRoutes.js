@@ -3,6 +3,7 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import crypto from "crypto";
+import contentDisposition from "content-disposition";
 import { fileURLToPath } from "url";
 import archiver from "archiver";
 import db from "../database.js";
@@ -104,6 +105,13 @@ const MAGIC_BYTES = {
   ".jpg":  { bytes: [0xff, 0xd8, 0xff],       label: "JPEG" },
   ".jpeg": { bytes: [0xff, 0xd8, 0xff],       label: "JPEG" },
   ".png":  { bytes: [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a], label: "PNG" },
+};
+
+const MIME_TYPES = {
+  ".pdf": "application/pdf",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".png": "image/png",
 };
 
 // PDF에서 JavaScript 실행에 사용되는 딕셔너리 키 패턴
@@ -698,7 +706,15 @@ router.get("/:id/download", authenticateToken, (req, res) => {
         })
       : path.basename(enrollment.stored_file_name);
 
-    res.download(filePath, displayFileName);
+    // Express의 res.download()/res.sendFile()은 내부적으로 send 모듈이 경로를
+    // 재해석하는데, 특정 환경(예: 경로에 '+' 문자가 포함된 경우)에서 존재하는
+    // 파일도 못 찾는 것으로 오판하는 문제가 있어 직접 스트리밍한다.
+    res.setHeader(
+      "Content-Type",
+      MIME_TYPES[ext] || "application/octet-stream",
+    );
+    res.setHeader("Content-Disposition", contentDisposition(displayFileName));
+    fs.createReadStream(filePath).pipe(res);
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "서버 오류가 발생했습니다." });
