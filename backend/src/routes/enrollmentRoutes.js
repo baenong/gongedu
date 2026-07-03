@@ -304,7 +304,7 @@ router.get(
 
       let query = `
       SELECT c.id as course_id, c.name as course_name, c.end_date,
-             e.state, e.submitted_at, e.file_name
+             e.state, e.submitted_at, e.file_name, e.stored_file_name
       FROM courses c
       LEFT JOIN enrollments e ON c.id = e.course_id AND e.user_id = ?
     `;
@@ -323,7 +323,27 @@ router.get(
       query += ` ORDER BY c.end_date ASC`;
 
       const status = db.prepare(query).all(...params);
-      res.json(status);
+
+      const owner = db
+        .prepare("SELECT name, department, team FROM users WHERE id = ?")
+        .get(userId);
+
+      const enriched = status.map((row) => {
+        if (row.state !== 2 || !row.stored_file_name || !owner) return row;
+        const ext = path.extname(row.stored_file_name);
+        return {
+          ...row,
+          file_name: buildDisplayFileName({
+            department: owner.department,
+            team: owner.team,
+            name: owner.name,
+            courseName: row.course_name,
+            ext,
+          }),
+        };
+      });
+
+      res.json(enriched);
     } catch (error) {
       console.error(error);
       res.status(500).json({ message: "서버 오류가 발생했습니다." });
@@ -491,11 +511,27 @@ router.get("/my/:courseId", authenticateToken, (req, res) => {
         `
         SELECT e.id as enrollment_id, e.state, e.submitted_at, e.file_name, e.stored_file_name
         FROM enrollments e
-        WHERE e.course_id = ? AND e.user_id = ? 
+        WHERE e.course_id = ? AND e.user_id = ?
       `,
       )
 
       .get(courseId, userId);
+
+    if (myEnrollment && myEnrollment.state === 2 && myEnrollment.stored_file_name) {
+      const owner = db
+        .prepare("SELECT name, department, team FROM users WHERE id = ?")
+        .get(userId);
+      const course = db.prepare("SELECT name FROM courses WHERE id = ?").get(courseId);
+      const ext = path.extname(myEnrollment.stored_file_name);
+      myEnrollment.file_name = buildDisplayFileName({
+        department: owner.department,
+        team: owner.team,
+        name: owner.name,
+        courseName: course?.name ?? "",
+        ext,
+      });
+    }
+
     res.json(myEnrollment);
   } catch (error) {
     console.error(error);
@@ -511,14 +547,34 @@ router.get("/my", authenticateToken, (req, res) => {
     const myEnrollments = db
       .prepare(
         `
-      SELECT e.*, c.name as course_name, c.end_date 
+      SELECT e.*, c.name as course_name, c.end_date
       FROM enrollments e
       JOIN courses c ON e.course_id = c.id
       WHERE e.user_id = ?
       `,
       )
       .all(userId);
-    res.json(myEnrollments);
+
+    const owner = db
+      .prepare("SELECT name, department, team FROM users WHERE id = ?")
+      .get(userId);
+
+    const enriched = myEnrollments.map((row) => {
+      if (row.state !== 2 || !row.stored_file_name || !owner) return row;
+      const ext = path.extname(row.stored_file_name);
+      return {
+        ...row,
+        file_name: buildDisplayFileName({
+          department: owner.department,
+          team: owner.team,
+          name: owner.name,
+          courseName: row.course_name,
+          ext,
+        }),
+      };
+    });
+
+    res.json(enriched);
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "서버 오류가 발생했습니다." });
@@ -570,7 +626,24 @@ router.get("/course/:courseId", authenticateToken, (req, res) => {
 
     query += ` ORDER BY u.department, u.team, u.name`;
     const status = db.prepare(query).all(...params);
-    res.json(status);
+
+    const course = db.prepare("SELECT name FROM courses WHERE id = ?").get(courseId);
+    const enriched = status.map((row) => {
+      if (row.state !== 2 || !row.stored_file_name) return row;
+      const ext = path.extname(row.stored_file_name);
+      return {
+        ...row,
+        file_name: buildDisplayFileName({
+          department: row.department,
+          team: row.team,
+          name: row.name,
+          courseName: course?.name ?? "",
+          ext,
+        }),
+      };
+    });
+
+    res.json(enriched);
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "서버 오류가 발생했습니다." });
