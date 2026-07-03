@@ -49,26 +49,40 @@ const CalendarView = ({
     onMonthChange(d.getFullYear(), d.getMonth());
   };
 
+  const goToday = () => {
+    const now = new Date();
+    onMonthChange(now.getFullYear(), now.getMonth());
+  };
+
   return (
     <div className="shrink-0 lg:shrink bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-4 lg:basis-[48rem] lg:min-w-[34rem]">
       <div className="flex items-center justify-between mb-3">
         <button
-          onClick={goPrevMonth}
-          className="px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300"
-          aria-label="이전 달"
+          onClick={goToday}
+          className="px-2 py-1 rounded text-sm font-medium text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 transition"
         >
-          ◀
+          오늘
         </button>
-        <span className="font-semibold text-gray-900 dark:text-white">
-          {year}년 {month + 1}월
-        </span>
-        <button
-          onClick={goNextMonth}
-          className="px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300"
-          aria-label="다음 달"
-        >
-          ▶
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={goPrevMonth}
+            className="px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300"
+            aria-label="이전 달"
+          >
+            ◀
+          </button>
+          <span className="font-semibold text-gray-900 dark:text-white">
+            {year}년 {month + 1}월
+          </span>
+          <button
+            onClick={goNextMonth}
+            className="px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300"
+            aria-label="다음 달"
+          >
+            ▶
+          </button>
+        </div>
+        <div className="w-[42px]" aria-hidden="true" />
       </div>
 
       <div className="grid grid-cols-7 text-center text-sm mb-1">
