@@ -293,7 +293,7 @@ router.post(
       const cleanupPath = renamedToFinal ? finalPath : tempPath;
       if (fs.existsSync(cleanupPath)) fs.unlinkSync(cleanupPath);
       console.error(error);
-      res.status(500).json({ message: error.message });
+      res.status(500).json({ message: "제출 처리 중 오류가 발생했습니다." });
     }
   },
 );
@@ -332,7 +332,8 @@ router.get(
       const status = db.prepare(query).all(...params);
       res.json(status);
     } catch (error) {
-      res.status(500).json({ message: error.message });
+      console.error(error);
+      res.status(500).json({ message: "서버 오류가 발생했습니다." });
     }
   },
 );
@@ -485,7 +486,8 @@ router.get("/my/:courseId", authenticateToken, (req, res) => {
       .get(courseId, userId);
     res.json(myEnrollment);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error(error);
+    res.status(500).json({ message: "서버 오류가 발생했습니다." });
   }
 });
 
@@ -506,7 +508,8 @@ router.get("/my", authenticateToken, (req, res) => {
       .all(userId);
     res.json(myEnrollments);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error(error);
+    res.status(500).json({ message: "서버 오류가 발생했습니다." });
   }
 });
 
@@ -557,7 +560,8 @@ router.get("/course/:courseId", authenticateToken, (req, res) => {
     const status = db.prepare(query).all(...params);
     res.json(status);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error(error);
+    res.status(500).json({ message: "서버 오류가 발생했습니다." });
   }
 });
 
@@ -589,7 +593,8 @@ router.get("/:id/download", authenticateToken, (req, res) => {
 
     res.download(filePath, path.basename(enrollment.stored_file_name));
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error(error);
+    res.status(500).json({ message: "서버 오류가 발생했습니다." });
   }
 });
 
@@ -624,7 +629,8 @@ router.delete("/:enrollmentId", authenticateToken, (req, res) => {
 
     res.json({ message: "제출내역이 삭제되었습니다." });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error(error);
+    res.status(500).json({ message: "서버 오류가 발생했습니다." });
   }
 });
 

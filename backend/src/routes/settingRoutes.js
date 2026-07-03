@@ -103,7 +103,8 @@ router.get("/", authenticateToken, requireAdmin, (req, res) => {
     settings.forEach((item) => (settingsObj[item.key] = item.value));
     res.json(settingsObj);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error(error);
+    res.status(500).json({ message: "서버 오류가 발생했습니다." });
   }
 });
 
@@ -118,7 +119,8 @@ router.post("/", authenticateToken, requireAdmin, (req, res) => {
     stmt.run(key, value);
     res.json({ message: "설정이 저장되었습니다." });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error(error);
+    res.status(500).json({ message: "서버 오류가 발생했습니다." });
   }
 });
 

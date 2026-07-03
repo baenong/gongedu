@@ -89,7 +89,8 @@ router.get("/", authenticateToken, (req, res) => {
     const courses = db.prepare(query).all(...params);
     res.json(courses);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error(error);
+    res.status(500).json({ message: "서버 오류가 발생했습니다." });
   }
 });
 
@@ -110,7 +111,8 @@ router.post("/", authenticateToken, requireAdmin, (req, res) => {
       id: result.lastInsertRowid,
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error(error);
+    res.status(500).json({ message: "서버 오류가 발생했습니다." });
   }
 });
 
@@ -154,7 +156,8 @@ router.delete("/:id", authenticateToken, requireAdmin, (req, res) => {
 
     res.json({ message: "교육 과정이 삭제되었습니다." });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error(error);
+    res.status(500).json({ message: "서버 오류가 발생했습니다." });
   }
 });
 
@@ -189,7 +192,8 @@ router.put("/:id", authenticateToken, requireAdmin, (req, res) => {
 
     res.json({ message: "교육과정 정보가 수정되었습니다." });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error(error);
+    res.status(500).json({ message: "서버 오류가 발생했습니다." });
   }
 });
 

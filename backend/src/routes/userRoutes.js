@@ -21,6 +21,11 @@ const uploadDir = path.join(__dirname, "../../uploads");
 
 const upload = multer({ storage: multer.memoryStorage() });
 
+// 유효한 role 값 목록 (1~6)
+const VALID_ROLES = Object.values(roles);
+const isValidRole = (value) =>
+  Number.isInteger(value) && VALID_ROLES.includes(value);
+
 // 모든 요청에 대해 '로그인 + 관리자' 권한 확인
 router.use(authenticateToken, requireAdmin);
 
@@ -42,7 +47,8 @@ router.get("/", (req, res) => {
       .all();
     res.json(users);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error(error);
+    res.status(500).json({ message: "서버 오류가 발생했습니다." });
   }
 });
 
@@ -61,6 +67,9 @@ router.post("/", (req, res) => {
 
   try {
     const assignedRole = role || 1;
+    if (!isValidRole(assignedRole)) {
+      return res.status(400).json({ message: "유효하지 않은 권한 값입니다." });
+    }
     if (assignedRole >= req.user.role) {
       return res.status(403).json({ message: "권한이 없습니다." });
     }
@@ -89,7 +98,8 @@ router.post("/", (req, res) => {
     if (error.code === "SQLITE_CONSTRAINT_UNIQUE") {
       return res.status(400).json({ message: "이미 존재하는 아이디입니다." });
     }
-    res.status(500).json({ message: error.message });
+    console.error(error);
+    res.status(500).json({ message: "서버 오류가 발생했습니다." });
   }
 });
 
@@ -181,7 +191,8 @@ router.delete("/:id", (req, res) => {
 
     res.json({ message: "사용자가 삭제되었습니다." });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error(error);
+    res.status(500).json({ message: "서버 오류가 발생했습니다." });
   }
 });
 
@@ -201,9 +212,14 @@ router.put("/:id", (req, res) => {
       return res.status(403).json({ message: "권한이 없습니다." });
     }
 
-    // 요청자 권한 이상의 role로 변경 불가
-    if (role !== undefined && role >= req.user.role) {
-      return res.status(403).json({ message: "권한이 없습니다." });
+    if (role !== undefined) {
+      if (!isValidRole(role)) {
+        return res.status(400).json({ message: "유효하지 않은 권한 값입니다." });
+      }
+      // 요청자 권한 이상의 role로 변경 불가
+      if (role >= req.user.role) {
+        return res.status(403).json({ message: "권한이 없습니다." });
+      }
     }
 
     // 비밀번호 입력 여부에 따른 분기
@@ -230,7 +246,8 @@ router.put("/:id", (req, res) => {
 
     res.json({ message: "사용자 정보가 수정되었습니다." });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error(error);
+    res.status(500).json({ message: "서버 오류가 발생했습니다." });
   }
 });
 

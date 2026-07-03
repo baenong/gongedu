@@ -54,7 +54,8 @@ router.get("/", authenticateToken, (req, res) => {
       .all();
     res.json(departments);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error(error);
+    res.status(500).json({ message: "서버 오류가 발생했습니다." });
   }
 });
 
@@ -72,7 +73,8 @@ router.get("/teams", authenticateToken, (req, res) => {
       .all();
     res.json(teams);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error(error);
+    res.status(500).json({ message: "서버 오류가 발생했습니다." });
   }
 });
 
@@ -105,7 +107,8 @@ router.get("/:id", authenticateToken, (req, res) => {
 
     res.json(deptData);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error(error);
+    res.status(500).json({ message: "서버 오류가 발생했습니다." });
   }
 });
 
@@ -123,7 +126,8 @@ router.post("/", authenticateToken, requireAdmin, (req, res) => {
       id: result.lastInsertRowid,
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error(error);
+    res.status(500).json({ message: "서버 오류가 발생했습니다." });
   }
 });
 
@@ -141,7 +145,8 @@ router.post("/teams", authenticateToken, requireAdmin, (req, res) => {
       id: result.lastInsertRowid,
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error(error);
+    res.status(500).json({ message: "서버 오류가 발생했습니다." });
   }
 });
 
@@ -438,7 +443,8 @@ router.put("/teams/:id", authenticateToken, requireAdmin, (req, res) => {
 
     // 변경 실시
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error(error);
+    res.status(500).json({ message: "서버 오류가 발생했습니다." });
   }
 });
 
@@ -478,7 +484,8 @@ router.put("/:id", authenticateToken, requireAdmin, (req, res) => {
 
     res.json({ message: "부서가 수정되었습니다." });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error(error);
+    res.status(500).json({ message: "서버 오류가 발생했습니다." });
   }
 });
 
@@ -530,7 +537,8 @@ router.delete("/teams/:id", authenticateToken, requireAdmin, (req, res) => {
   } catch (error) {
     if (error.message === "팀/계를 찾을 수 없습니다.")
       return res.status(404).json({ message: error.message });
-    res.status(500).json({ message: error.message });
+    console.error(error);
+    res.status(500).json({ message: "서버 오류가 발생했습니다." });
   }
 });
 
@@ -587,7 +595,8 @@ router.delete("/:id", authenticateToken, requireAdmin, (req, res) => {
   } catch (error) {
     if (error.message === "부서를 찾을 수 없습니다.")
       return res.status(404).json({ message: error.message });
-    res.status(500).json({ message: error.message });
+    console.error(error);
+    res.status(500).json({ message: "서버 오류가 발생했습니다." });
   }
 });
 

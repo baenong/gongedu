@@ -325,6 +325,15 @@ PuTTY 창은 SSH 연결 유지를 위해 열어 두어야 합니다.
 > docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
 > ```
 
+### 외부 도메인에서 API 호출 (CORS)
+
+프론트엔드는 항상 nginx(운영) 또는 vite 프록시(개발)를 통해 API와 같은 origin으로 통신하므로, 기본적으로 다른 origin의 브라우저 요청은 차단됩니다.
+별도 도메인(예: 다른 서버의 관리용 대시보드)에서 API를 직접 호출해야 하는 경우에만 `backend/.env`에 아래처럼 추가하세요.
+
+```
+CORS_ORIGIN=https://example.com,https://admin.example.com
+```
+
 ### 로고 변경
 
 `frontend/public/` 안의 SVG 파일 두 개를 교체하면 됩니다.

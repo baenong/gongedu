@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import helmet from "helmet";
 import dotenv from "dotenv";
 import morgan from "morgan";
 import fs from "fs";
@@ -58,8 +59,17 @@ app.use(morgan(logFormat, { stream: logStream }));
 
 const PORT = process.env.PORT || 8180;
 
+// 프론트엔드는 항상 nginx(운영)/vite 프록시(개발)를 통해 같은 origin으로 API를 호출하므로
+// 브라우저의 cross-origin 요청은 기본적으로 차단한다. 별도 도메인에서 API를 호출해야 하는
+// 경우에만 .env에 CORS_ORIGIN(콤마로 구분된 origin 목록)을 설정한다.
+const corsOrigins = process.env.CORS_ORIGIN
+  ? process.env.CORS_ORIGIN.split(",").map((origin) => origin.trim())
+  : false;
+
+app.use(helmet());
 app.use(
   cors({
+    origin: corsOrigins,
     exposedHeaders: ["Content-Disposition"],
   }),
 );
