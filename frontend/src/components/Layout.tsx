@@ -128,7 +128,7 @@ const Layout = () => {
             </button>
 
             {/* 우측 메뉴 */}
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 min-[500px]:gap-4">
               <button
                 onClick={toggleTheme}
                 className="relative p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors overflow-hidden w-10 h-10 flex items-center justify-center group"
@@ -168,7 +168,7 @@ const Layout = () => {
                       }); // 초기화
                       setShowPwdModal(true);
                     }}
-                    className="text-base text-gray-600 dark:text-gray-300 hidden sm:inline "
+                    className="text-base text-gray-600 dark:text-gray-300 hidden min-[600px]:inline "
                     title="비밀번호 변경"
                   >
                     <span className="font-semibold text-gray-800 dark:text-white hover:text-indigo-600 dark:hover:text-indigo-400 transition">
