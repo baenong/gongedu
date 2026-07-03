@@ -9,6 +9,7 @@ import toast, { Toaster } from "react-hot-toast";
 import HelpModal from "./HelpModal";
 import { getErrorMessage } from "../utils/errorUtils";
 import { roles } from "../utils/constants";
+import icoLogout from "../assets/icon/ico_logout.svg";
 
 const Layout = () => {
   const { user, logout } = useAuthStore();
@@ -198,9 +199,17 @@ const Layout = () => {
 
                   <button
                     onClick={handleLogout}
-                    className="ml-2 text-base bg-gray-100 dark:bg-indigo-100 hover:bg-gray-200 dark:hover:bg-indigo-200 text-gray-700 px-3 py-1.5 rounded-md transition"
+                    title="로그아웃"
+                    className="ml-2 flex items-center justify-center bg-gray-100 dark:bg-indigo-100 hover:bg-gray-200 dark:hover:bg-indigo-200 text-gray-700 px-3 py-1.5 rounded-md transition"
                   >
-                    로그아웃
+                    <img
+                      src={icoLogout}
+                      alt="로그아웃"
+                      className="w-5 h-5 min-[500px]:hidden"
+                    />
+                    <span className="hidden min-[500px]:inline text-base">
+                      로그아웃
+                    </span>
                   </button>
                 </>
               )}
