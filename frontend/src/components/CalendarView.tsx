@@ -37,6 +37,7 @@ const CalendarView = ({
   onDateClick,
 }: CalendarViewProps) => {
   const days = buildMonthGrid(year, month);
+  const todayKey = formatDateKey(new Date());
 
   const goPrevMonth = () => {
     const d = new Date(year, month - 1, 1);
@@ -90,6 +91,7 @@ const CalendarView = ({
           const isCurrentMonth = date.getMonth() === month;
           const { base, md, lg } = overflowCounts(events.length);
           const dayOfWeek = date.getDay();
+          const isToday = dateKey === todayKey;
 
           return (
             <div
@@ -97,7 +99,11 @@ const CalendarView = ({
               onClick={() =>
                 events.length > 0 && onDateClick(dateKey, events)
               }
-              className={`h-18 lg:h-24 border border-gray-100 dark:border-gray-700 rounded p-1 text-xs overflow-hidden ${
+              className={`h-18 lg:h-24 rounded p-1 text-xs overflow-hidden ${
+                isToday
+                  ? "border-2 border-emerald-300 dark:border-emerald-500/60"
+                  : "border border-gray-100 dark:border-gray-700"
+              } ${
                 isCurrentMonth
                   ? "bg-white dark:bg-gray-800"
                   : "bg-gray-50 dark:bg-gray-900 text-gray-400 dark:text-gray-600"
