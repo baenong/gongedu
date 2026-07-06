@@ -30,6 +30,8 @@ interface UserStatus {
   submitted_at: string | null;
   file_name: string | null;
   stored_file_name: string | null;
+  ai_flagged: number | null;
+  ai_reasoning: string | null;
 }
 
 const MainPage = () => {
@@ -1171,18 +1173,30 @@ const MainPage = () => {
 
                                     {status.file_name &&
                                     status.file_name.length > 0 ? (
-                                      <button
-                                        onClick={() =>
-                                          handleUserFileDownload(
-                                            status.enrollment_id!,
-                                            status.file_name!,
-                                          )
-                                        }
-                                        className={`text-left text-indigo-600 hover:text-indigo-900 hover:underline
+                                      <div className="flex items-center gap-1">
+                                        <button
+                                          onClick={() =>
+                                            handleUserFileDownload(
+                                              status.enrollment_id!,
+                                              status.file_name!,
+                                            )
+                                          }
+                                          className={`text-left text-indigo-600 hover:text-indigo-900 hover:underline
                                                 dark:text-indigo-400 dark:hover:text-indigo-500 cursor-pointer`}
-                                      >
-                                        📄 {status.file_name}
-                                      </button>
+                                        >
+                                          📄 {status.file_name}
+                                        </button>
+                                        {status.ai_flagged === 1 && (
+                                          <span
+                                            title={
+                                              status.ai_reasoning ??
+                                              "AI 검증에서 의심스러운 부분이 발견되었습니다."
+                                            }
+                                          >
+                                            ⚠️
+                                          </span>
+                                        )}
+                                      </div>
                                     ) : (
                                       <div className="text-gray-600 line-through">
                                         📄 파일명이 없거나 파일이 삭제되었습니다.
