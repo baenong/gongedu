@@ -27,21 +27,22 @@ const SimpleCourseList = ({
   );
 
   return (
-    <div className="flex-1 min-h-0 lg:min-w-[240px] overflow-y-auto scrollbar-hide bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-4">
+    <div className="flex-1 min-h-0 lg:min-w-[240px] overflow-y-auto scrollbar-hide bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700">
       {sorted.length === 0 ? (
-        <div className="text-center py-10 text-gray-500 dark:text-gray-400">
+        <div className="text-center py-10 text-gray-500 dark:text-gray-400 p-4">
           등록된 교육과정이 없습니다.
         </div>
       ) : (
         <>
-          <div className="flex items-center gap-2 px-2 pb-1.5 mb-1 border-b border-gray-200 dark:border-gray-700 text-base font-semibold text-gray-500 dark:text-gray-400">
+          <div className="sticky top-0 z-10 flex items-center gap-2 px-6 pt-4 pb-1.5 mb-1 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 text-base font-semibold text-gray-500 dark:text-gray-400">
             <span className="w-2.5 shrink-0" />
-            <span className="w-18 shrink-0">마 감 일</span>
-            <span className="shrink-0 text-gray-300 dark:text-gray-600">|</span>
-            <span className="flex-1">교 육 명</span>
-            <span className="w-20 shrink-0 text-right">주관부서</span>
+            <span className="w-18 shrink-0 text-center">마 감 일</span>
+            <span className="flex-1 text-center">교 육 명</span>
+            <span className="min-[895px]:max-[1019px]:hidden w-24 shrink-0 text-right">
+              주관부서
+            </span>
           </div>
-          <ul className="space-y-1">
+          <ul className="space-y-1 px-4 pb-4">
             {sorted.map((course) => {
               const isDone = !!getEnrollment(course.id);
               const status = classifyCourseStatus(course, isDone);
@@ -62,7 +63,7 @@ const SimpleCourseList = ({
                       |
                     </span>
                     <span className="truncate flex-1">{course.name}</span>
-                    <span className="w-20 shrink-0 text-right truncate text-gray-500 dark:text-gray-400">
+                    <span className="min-[895px]:max-[1019px]:hidden w-24 shrink-0 text-right truncate text-gray-500 dark:text-gray-400">
                       {course.department}
                     </span>
                   </button>

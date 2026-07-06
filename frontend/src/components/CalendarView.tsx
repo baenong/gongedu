@@ -55,7 +55,7 @@ const CalendarView = ({
   };
 
   return (
-    <div className="shrink-0 lg:shrink bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-4 lg:basis-[48rem] lg:min-w-[34rem]">
+    <div className="shrink-0 lg:shrink bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-4 lg:basis-[48rem] lg:min-w-[34rem] min-[896px]:max-[1069px]:lg:basis-[46rem]">
       <div className="flex items-center justify-between mb-3">
         <button
           onClick={goToday}
