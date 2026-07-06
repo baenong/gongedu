@@ -367,6 +367,34 @@ const MainPage = () => {
     });
   };
 
+  // 관리자(부서담당/교육담당/총괄담당 등)가 관할 범위 내 직원의 제출내역을 삭제
+  // 실제 권한 검증은 서버(canAccessEnrollment)에서 최종적으로 수행한다.
+  const handleAdminDeleteEnrollment = async (
+    enrollmentId: number,
+    targetName: string,
+  ) => {
+    if (!selectedCourse) return;
+    if (!confirm(`${targetName}님의 제출한 수료증을 삭제하시겠습니까?`)) return;
+
+    const deletePromise = api
+      .delete(`/enrollments/${enrollmentId}`)
+      .then(async (res) => {
+        const statusRes = await api.get(
+          `/enrollments/course/${selectedCourse.id}`,
+        );
+        setCourseStatusList(statusRes.data);
+        fetchData();
+        return res;
+      });
+
+    toast.promise(deletePromise, {
+      loading: "제출내역 삭제 중...",
+      success: "정상적으로 삭제되었습니다!",
+      error: (error) =>
+        error.response?.data?.message || "삭제 중 오류가 발생했습니다.",
+    });
+  };
+
   // ZIP 다운로드
   const handleZipDownload = async (courseId: number, courseName: string) => {
     try {
@@ -1137,27 +1165,42 @@ const MainPage = () => {
                             </td>
                             <td className="px-4 py-3 text-left text-base">
                               {status.state === 2 && status.enrollment_id ? (
-                                <div className="flex flex-col text-left">
-                                  {status.submitted_at}
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="flex flex-col text-left">
+                                    {status.submitted_at}
 
-                                  {status.file_name &&
-                                  status.file_name.length > 0 ? (
+                                    {status.file_name &&
+                                    status.file_name.length > 0 ? (
+                                      <button
+                                        onClick={() =>
+                                          handleUserFileDownload(
+                                            status.enrollment_id!,
+                                            status.file_name!,
+                                          )
+                                        }
+                                        className={`text-left text-indigo-600 hover:text-indigo-900 hover:underline
+                                                dark:text-indigo-400 dark:hover:text-indigo-500 cursor-pointer`}
+                                      >
+                                        📄 {status.file_name}
+                                      </button>
+                                    ) : (
+                                      <div className="text-gray-600 line-through">
+                                        📄 파일명이 없거나 파일이 삭제되었습니다.
+                                      </div>
+                                    )}
+                                  </div>
+                                  {status.user_id !== user?.id && (
                                     <button
                                       onClick={() =>
-                                        handleUserFileDownload(
+                                        handleAdminDeleteEnrollment(
                                           status.enrollment_id!,
-                                          status.file_name!,
+                                          status.name,
                                         )
                                       }
-                                      className={`text-left text-indigo-600 hover:text-indigo-900 hover:underline 
-                                                dark:text-indigo-400 dark:hover:text-indigo-500 cursor-pointer`}
+                                      className="shrink-0 text-base bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 px-3 py-1 rounded transition"
                                     >
-                                      📄 {status.file_name}
+                                      ❌ 삭제
                                     </button>
-                                  ) : (
-                                    <div className="text-gray-600 line-through">
-                                      📄 파일명이 없거나 파일이 삭제되었습니다.
-                                    </div>
                                   )}
                                 </div>
                               ) : status.user_id !== user?.id ? (
