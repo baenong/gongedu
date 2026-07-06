@@ -63,7 +63,6 @@ const SettingPage = () => {
     try {
       const response = await api.get("/departments");
       setDepartments(response.data);
-      toast.success("부서 목록을 불러왔습니다.");
     } catch (error) {
       toast.error(getErrorMessage(error, "부서 목록을 불러올 수 없습니다."));
     }
@@ -82,7 +81,9 @@ const SettingPage = () => {
           name: deptName,
           orderIndex: deptIdx,
         };
-        setDepartments([...departments, deptData]);
+        setDepartments(
+          [...departments, deptData].sort((a, b) => a.orderIndex - b.orderIndex),
+        );
         setSelectedDept(0);
         toast.success("부서가 추가되었습니다.");
       } else {
@@ -108,9 +109,9 @@ const SettingPage = () => {
           orderIndex: deptIdx,
         };
 
-        const tempDepts = departments.map((dept) =>
-          dept.id === deptData.id ? deptData : dept,
-        );
+        const tempDepts = departments
+          .map((dept) => (dept.id === deptData.id ? deptData : dept))
+          .sort((a, b) => a.orderIndex - b.orderIndex);
         setDepartments(tempDepts);
         toast.success("부서가 수정되었습니다.");
       } else {
@@ -164,8 +165,12 @@ const SettingPage = () => {
           departmentId: selectedDept,
         };
 
-        setAllTeams([...allTeams, teamData]);
-        setTeams([...teams, teamData]);
+        setAllTeams(
+          [...allTeams, teamData].sort((a, b) => a.orderIndex - b.orderIndex),
+        );
+        setTeams(
+          [...teams, teamData].sort((a, b) => a.orderIndex - b.orderIndex),
+        );
         setSelectedTeam(0);
         toast.success("팀/계가 추가되었습니다.");
       } else {
@@ -193,14 +198,14 @@ const SettingPage = () => {
           departmentId: selectedDept,
         };
 
-        const tempAllTeams = allTeams.map((team) =>
-          team.id === teamData.id ? teamData : team,
-        );
+        const tempAllTeams = allTeams
+          .map((team) => (team.id === teamData.id ? teamData : team))
+          .sort((a, b) => a.orderIndex - b.orderIndex);
         setAllTeams(tempAllTeams);
 
-        const tempTeams = teams.map((team) =>
-          team.id === teamData.id ? teamData : team,
-        );
+        const tempTeams = teams
+          .map((team) => (team.id === teamData.id ? teamData : team))
+          .sort((a, b) => a.orderIndex - b.orderIndex);
         setTeams(tempTeams);
 
         setSelectedTeam(0);
@@ -228,7 +233,7 @@ const SettingPage = () => {
       }
     })();
     //fetchSettings();
-    //getDepartments();
+    getDepartments();
     getAllTeams();
   }, []);
 
@@ -484,15 +489,6 @@ const SettingPage = () => {
                   부서
                 </FormLabel>
                 <div className={`${btnFrameStyle} gap-1.5`}>
-                  <ActionButton
-                    onClick={getDepartments}
-                    className={`bg-gray-100 dark:bg-gray-700 
-                    text-gray-700 dark:text-gray-200 
-                    hover:bg-gray-200 dark:hover:bg-gray-600
-                    `}
-                  >
-                    🔍 조회
-                  </ActionButton>
                   <ActionButton
                     onClick={handleDownloadDeptTemplate}
                     className="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600"
