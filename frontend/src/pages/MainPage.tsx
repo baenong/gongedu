@@ -936,6 +936,9 @@ const MainPage = () => {
               <div className="flex-1">
                 <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">
                   {selectedCourse.name}
+                  <span className="ml-5 text-base font-normal text-gray-500 dark:text-gray-400">
+                    {selectedCourse.department}
+                  </span>
                 </h2>
                 <div className="flex">
                   <span className="flex items-center text-base font-semibold text-gray-500 dark:text-gray-400 mr-2">
