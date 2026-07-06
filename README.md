@@ -2,10 +2,10 @@
   <img src="./.github/assets/brightness.svg" width="128">
 </p>
 
-<h1 align="center">GongEdu</h1>
+<hr>
 
 <p align="center">
-  <img src="./.github/assets/logo-white.svg" width="256"><br>
+  <img src="./.github/assets/logo-white.svg" width="225">
   <br><i>"공직자 1시간은, 5200만 시간 가치"</i>
   <br>
   <br><strong>공무원 필수교육, 이제 한 곳에서 관리합니다.</strong>
@@ -120,7 +120,7 @@
 
 **등록한 교육 관리**
 
-![교육 관리](./.github/assets/08%20manage.gif)
+![교육 관리](./.github/assets/08%20delete.gif)
 
 ---
 
