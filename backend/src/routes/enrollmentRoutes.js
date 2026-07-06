@@ -645,9 +645,10 @@ router.get("/course/:courseId", authenticateToken, (req, res) => {
   try {
     let query = `
       SELECT u.id as user_id, u.name,
-             u.department, u.department_id as departmentId, 
+             u.department, u.department_id as departmentId,
              u.team, u.team_id as teamId,
-             e.id as enrollment_id, e.state, e.submitted_at, e.file_name, e.stored_file_name
+             e.id as enrollment_id, e.state, e.submitted_at, e.file_name, e.stored_file_name,
+             e.ai_verification, e.ai_flagged
       FROM users u
       LEFT JOIN enrollments e ON u.id = e.user_id AND e.course_id = ? 
       WHERE u.role < ${roles["시스템관리자"]}
@@ -669,11 +670,24 @@ router.get("/course/:courseId", authenticateToken, (req, res) => {
     const status = db.prepare(query).all(...params);
 
     const course = db.prepare("SELECT name FROM courses WHERE id = ?").get(courseId);
-    const enriched = status.map(({ stored_file_name, ...row }) => {
-      if (row.state !== 2 || !stored_file_name) return row;
+    const enriched = status.map(({ stored_file_name, ai_verification, ...row }) => {
+      let ai_reasoning = null;
+      if (ai_verification) {
+        try {
+          ai_reasoning = JSON.parse(ai_verification).reasoning ?? null;
+        } catch {
+          ai_reasoning = null;
+        }
+      }
+
+      if (row.state !== 2 || !stored_file_name) {
+        return { ...row, ai_reasoning };
+      }
+
       const ext = path.extname(stored_file_name);
       return {
         ...row,
+        ai_reasoning,
         file_name: buildDisplayFileName({
           department: row.department,
           team: row.team,
