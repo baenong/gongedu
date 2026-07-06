@@ -17,6 +17,7 @@ import {
   buildDisplayFileName,
 } from "../utils/enrollmentFileName.js";
 import { roles } from "../../constants.js";
+import { verifyCertificate } from "../services/ai/verifyCertificate.js";
 
 const router = express.Router();
 const __filename = fileURLToPath(import.meta.url);
@@ -183,7 +184,7 @@ router.post(
         .json({ message: err.message || "파일 업로드 중 오류가 발생했습니다." });
     });
   },
-  (req, res) => {
+  async (req, res) => {
     if (!req.file) return res.status(400).json({ message: "파일이 없습니다." });
 
     const { courseId } = req.params;
@@ -259,6 +260,21 @@ router.post(
       renamedToFinal = true;
       const submittedAt = getCurrentKST();
 
+      const aiResult = await verifyCertificate({
+        fileBuffer: fs.readFileSync(finalPath),
+        mimeType: MIME_TYPES[ext] || "application/octet-stream",
+        courseName: course.name,
+        submitterName: targetUser.name,
+      });
+      const aiVerification = aiResult ? JSON.stringify(aiResult) : null;
+      const aiFlagged =
+        aiResult &&
+        (!aiResult.isCertificate ||
+          !aiResult.nameMatches ||
+          !aiResult.courseMatches)
+          ? 1
+          : 0;
+
       if (existing) {
         if (
           existing.stored_file_name &&
@@ -275,17 +291,32 @@ router.post(
         }
 
         const update = db.prepare(`
-        UPDATE enrollments 
-        SET state = 2, file_name = ?, stored_file_name = ?, submitted_at = ?
+        UPDATE enrollments
+        SET state = 2, file_name = ?, stored_file_name = ?, submitted_at = ?, ai_verification = ?, ai_flagged = ?
         WHERE id = ?
       `);
-        update.run(finalFileName, finalFileName, submittedAt, existing.id);
+        update.run(
+          finalFileName,
+          finalFileName,
+          submittedAt,
+          aiVerification,
+          aiFlagged,
+          existing.id,
+        );
       } else {
         const insert = db.prepare(`
-        INSERT INTO enrollments (user_id, course_id, state, file_name, stored_file_name, submitted_at)
-        VALUES (?, ?, 2, ?, ?, ?)
+        INSERT INTO enrollments (user_id, course_id, state, file_name, stored_file_name, submitted_at, ai_verification, ai_flagged)
+        VALUES (?, ?, 2, ?, ?, ?, ?, ?)
       `);
-        insert.run(targetUserId, courseId, finalFileName, finalFileName, submittedAt);
+        insert.run(
+          targetUserId,
+          courseId,
+          finalFileName,
+          finalFileName,
+          submittedAt,
+          aiVerification,
+          aiFlagged,
+        );
       }
 
       res.json({ message: "수료증이 제출되었습니다." });
