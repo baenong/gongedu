@@ -48,7 +48,7 @@ const LoginPage = () => {
           <img
             src="/logo-white.svg"
             alt="logo"
-            className="h-24 object-contain mb-5"
+            className="h-32 object-contain mb-5"
           />
           <p className="text-indigo-100 text-base px-8">
             매년 계속 증가하고 있는 필수이수교육들의 이수여부,

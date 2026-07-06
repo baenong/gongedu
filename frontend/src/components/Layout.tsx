@@ -99,7 +99,7 @@ const Layout = () => {
             >
               <img
                 src={isDarkMode ? "/logo-white.svg" : "/logo.svg"}
-                className="h-12"
+                className="h-16"
               />
             </Link>
 
