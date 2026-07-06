@@ -49,6 +49,7 @@ export function initDatabase() {
       end_date TEXT NOT NULL,
       detail TEXT,
       created_by INTEGER,
+      department_id INTEGER DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (created_by) REFERENCES users (id) ON DELETE SET NULL
     )
@@ -148,7 +149,15 @@ export function initDatabase() {
 }
 
 function migrateDatabase() {
-  // DB를 마이그레이션해야할 경우 여기에 추가
+  const courseColumns = db.prepare("PRAGMA table_info(courses)").all();
+  const hasDepartmentId = courseColumns.some(
+    (col) => col.name === "department_id",
+  );
+  if (!hasDepartmentId) {
+    db.exec(
+      "ALTER TABLE courses ADD COLUMN department_id INTEGER DEFAULT 0",
+    );
+  }
 }
 
 export default db;
