@@ -46,23 +46,26 @@ router.get("/", authenticateToken, (req, res) => {
     }
 
     let query = `
-      SELECT 
+      SELECT
         c.*,
+        d.name as department,
         -- 1. 전체 대상 인원
         (SELECT COUNT(*) FROM users u WHERE ${userCondition}) as total_count,
         -- 2. 제출 완료 인원
-        (SELECT COUNT(*) 
-         FROM enrollments e 
-         JOIN users u ON e.user_id = u.id 
+        (SELECT COUNT(*)
+         FROM enrollments e
+         JOIN users u ON e.user_id = u.id
          WHERE e.course_id = c.id AND e.state = 2 AND ${enrollmentCondition}
         ) as submitted_count
       FROM courses c
+      LEFT JOIN departments d ON d.id = c.department_id
     `;
 
     // 교육담당(4) — 소유 여부에 따라 분기
     if (role === roles["교육담당"]) {
       query = `
       SELECT c.*,
+        d.name as department,
         CASE WHEN c.created_by = ?
           THEN (SELECT COUNT(*) FROM users u WHERE u.role < ${roles["교육담당"]})
           ELSE NULL
@@ -75,6 +78,7 @@ router.get("/", authenticateToken, (req, res) => {
           ELSE NULL
         END as submitted_count
       FROM courses c
+      LEFT JOIN departments d ON d.id = c.department_id
     `;
     }
 
@@ -99,12 +103,25 @@ router.get("/", authenticateToken, (req, res) => {
 router.post("/", authenticateToken, requireAdmin, (req, res) => {
   const { year, name, end_date, detail } = req.body;
 
+  // 교육담당은 본인 부서로 강제 지정, 총괄담당 이상은 요청 값을 그대로 사용
+  const department_id =
+    req.user.role === roles["교육담당"]
+      ? req.user.departmentId
+      : (req.body.department_id ?? 0);
+
   try {
     const stmt = db.prepare(`
-      INSERT INTO courses (year, name, end_date, detail, created_by)
-      VALUES (?, ?, ?, ?, ?)
+      INSERT INTO courses (year, name, end_date, detail, created_by, department_id)
+      VALUES (?, ?, ?, ?, ?, ?)
     `);
-    const result = stmt.run(year, name, end_date, detail, req.user.id);
+    const result = stmt.run(
+      year,
+      name,
+      end_date,
+      detail,
+      req.user.id,
+      department_id,
+    );
 
     res.status(201).json({
       message: "교육 과정이 등록되었습니다.",
