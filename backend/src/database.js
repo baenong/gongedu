@@ -65,6 +65,8 @@ export function initDatabase() {
       file_name TEXT,
       stored_file_name TEXT,
       submitted_at DATETIME,
+      ai_verification TEXT,
+      ai_flagged INTEGER DEFAULT 0,
       FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
       FOREIGN KEY (course_id) REFERENCES courses (id) ON DELETE CASCADE
     )
@@ -156,6 +158,22 @@ function migrateDatabase() {
   if (!hasDepartmentId) {
     db.exec(
       "ALTER TABLE courses ADD COLUMN department_id INTEGER DEFAULT 0",
+    );
+  }
+
+  const enrollmentColumns = db.prepare("PRAGMA table_info(enrollments)").all();
+  const hasAiVerification = enrollmentColumns.some(
+    (col) => col.name === "ai_verification",
+  );
+  if (!hasAiVerification) {
+    db.exec("ALTER TABLE enrollments ADD COLUMN ai_verification TEXT");
+  }
+  const hasAiFlagged = enrollmentColumns.some(
+    (col) => col.name === "ai_flagged",
+  );
+  if (!hasAiFlagged) {
+    db.exec(
+      "ALTER TABLE enrollments ADD COLUMN ai_flagged INTEGER DEFAULT 0",
     );
   }
 }
