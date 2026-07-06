@@ -54,7 +54,7 @@ const SimpleCourseList = ({
                     className="w-full flex items-center gap-2 text-left px-2 py-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-100"
                   >
                     <span
-                      className={`inline-block w-2.5 h-2.5 rounded-full flex-shrink-0 ${STATUS_DOT_COLOR[status]}`}
+                      className={`inline-block w-2.5 h-2.5 rounded-full shrink-0 ${STATUS_DOT_COLOR[status]}`}
                     />
                     <span className="w-18 shrink-0 tabular-nums text-gray-500 dark:text-gray-400">
                       ({formatShortDate(course.end_date)})
