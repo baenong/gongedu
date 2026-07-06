@@ -79,6 +79,7 @@ const MainPage = () => {
     name: "",
     end_date: "",
     detail: "",
+    department_id: 0,
   });
 
   // 상세정보 및 이수현황 모달 상태
@@ -101,6 +102,12 @@ const MainPage = () => {
     { value: 0, label: "모든 부서" },
     ...departments.map((d) => ({ value: d.id, label: d.name })),
   ];
+
+  // 교육과정 등록 폼용 — "모든 부서"(필터 전용 옵션) 없이 실제 부서만 나열
+  const courseDepartmentOptions = departments.map((d) => ({
+    value: d.id,
+    label: d.name,
+  }));
 
   const filteredStatusList = courseStatusList.filter((status) => {
     const matchDepartment =
@@ -240,7 +247,7 @@ const MainPage = () => {
       await api.post("/courses", { ...newCourse, year });
       toast.success("교육과정이 등록되었습니다.");
       setShowCreateModal(false);
-      setNewCourse({ name: "", end_date: "", detail: "" });
+      setNewCourse({ name: "", end_date: "", detail: "", department_id: 0 });
       fetchData();
     } catch (error) {
       toast.error(getErrorMessage(error, "등록 중 오류가 발생했습니다."));
@@ -587,7 +594,18 @@ const MainPage = () => {
 
         {isSuperAdmin && (
           <button
-            onClick={() => setShowCreateModal(true)}
+            onClick={() => {
+              setNewCourse({
+                name: "",
+                end_date: "",
+                detail: "",
+                department_id:
+                  user?.role === roles["교육담당"]
+                    ? (user?.departmentId ?? 0)
+                    : 0,
+              });
+              setShowCreateModal(true);
+            }}
             className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md text-base font-medium transition"
           >
             + 교육과정 등록
@@ -850,6 +868,33 @@ const MainPage = () => {
                     setNewCourse({ ...newCourse, end_date: e.target.value })
                   }
                 />
+              </div>
+              <div>
+                <FormLabel>주관부서</FormLabel>
+                {user?.role === roles["교육담당"] ? (
+                  <Select
+                    value={newCourse.department_id}
+                    disabled
+                    onChange={() => {}}
+                    options={[
+                      {
+                        value: user?.departmentId ?? 0,
+                        label: user?.department || "미지정",
+                      },
+                    ]}
+                  />
+                ) : (
+                  <Select
+                    value={newCourse.department_id}
+                    onChange={(e) =>
+                      setNewCourse({
+                        ...newCourse,
+                        department_id: Number(e.target.value),
+                      })
+                    }
+                    options={courseDepartmentOptions}
+                  />
+                )}
               </div>
               <div>
                 <FormLabel>상세정보 (선택)</FormLabel>
