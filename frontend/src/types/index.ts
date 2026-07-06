@@ -18,6 +18,8 @@ export interface Course {
   end_date: string;
   detail: string;
   created_by?: number;
+  department_id?: number;
+  department?: string;
   total_count?: number;
   submitted_count?: number;
 }
