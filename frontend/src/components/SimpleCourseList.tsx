@@ -38,7 +38,8 @@ const SimpleCourseList = ({
             <span className="w-2.5 shrink-0" />
             <span className="w-18 shrink-0">마 감 일</span>
             <span className="shrink-0 text-gray-300 dark:text-gray-600">|</span>
-            <span>교 육 명</span>
+            <span className="flex-1">교 육 명</span>
+            <span className="w-20 shrink-0 text-right">주관부서</span>
           </div>
           <ul className="space-y-1">
             {sorted.map((course) => {
@@ -60,7 +61,10 @@ const SimpleCourseList = ({
                     <span className="shrink-0 text-gray-300 dark:text-gray-600">
                       |
                     </span>
-                    <span className="truncate">{course.name}</span>
+                    <span className="truncate flex-1">{course.name}</span>
+                    <span className="w-20 shrink-0 text-right truncate text-gray-500 dark:text-gray-400">
+                      {course.department}
+                    </span>
                   </button>
                 </li>
               );
