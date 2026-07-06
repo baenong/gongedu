@@ -202,10 +202,16 @@ router.put("/:id", authenticateToken, requireAdmin, (req, res) => {
         .json({ message: "본인이 등록한 교육과정만 수정할 수 있습니다." });
     }
 
+    // 주관부서 수정은 총괄담당 이상만 가능, 그 외 역할은 기존 값 유지
+    const department_id =
+      req.user.role >= roles["총괄담당"]
+        ? (req.body.department_id ?? course.department_id)
+        : course.department_id;
+
     const stmt = db.prepare(
-      "UPDATE courses SET end_date = ?, detail = ? WHERE id = ?",
+      "UPDATE courses SET end_date = ?, detail = ?, department_id = ? WHERE id = ?",
     );
-    stmt.run(end_date, detail, id);
+    stmt.run(end_date, detail, department_id, id);
 
     res.json({ message: "교육과정 정보가 수정되었습니다." });
   } catch (error) {

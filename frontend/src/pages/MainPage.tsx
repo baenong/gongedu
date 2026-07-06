@@ -37,6 +37,7 @@ const MainPage = () => {
   const isManager = user?.role && user.role >= roles["팀계담당"];
   const isDeptManager = user?.role && user.role === roles["부서담당"];
   const isSuperAdmin = user?.role && user?.role >= roles["교육담당"];
+  const isGeneralManager = user?.role && user?.role >= roles["총괄담당"];
 
   const thisYear = new Date().getFullYear();
 
@@ -465,6 +466,7 @@ const MainPage = () => {
         name: selectedCourse.name,
         end_date: selectedCourse.end_date,
         detail: selectedCourse.detail,
+        department_id: selectedCourse.department_id,
       });
       toast.success("정보가 수정되었습니다.");
       fetchData();
@@ -768,7 +770,7 @@ const MainPage = () => {
                         </div>
                       )}
                     </div>
-                    <Badge isDone={isDone} isUrgent={isUrgent} />
+                    <Badge isDone={isDone} isUrgent={isUrgent} className="ml-2" />
                   </div>
 
                   {/* 하단 액션 버튼 (클릭 이벤트 전파 방지 필수) */}
@@ -934,11 +936,25 @@ const MainPage = () => {
             {/* 모달 헤더 */}
             <div className="pt-6 pb-3 px-6 border-b border-gray-200 dark:border-gray-700 flex justify-between items-start">
               <div className="flex-1">
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-3 flex items-center">
                   {selectedCourse.name}
-                  <span className="ml-5 text-base font-normal text-gray-500 dark:text-gray-400">
-                    {selectedCourse.department}
-                  </span>
+                  {isGeneralManager ? (
+                    <Select
+                      value={selectedCourse.department_id ?? 0}
+                      onChange={(e) =>
+                        setSelectedCourse({
+                          ...selectedCourse,
+                          department_id: Number(e.target.value),
+                        })
+                      }
+                      options={courseDepartmentOptions}
+                      className="ml-5 w-40 text-base font-normal"
+                    />
+                  ) : (
+                    <span className="ml-5 text-base font-normal text-gray-500 dark:text-gray-400">
+                      {selectedCourse.department}
+                    </span>
+                  )}
                 </h2>
                 <div className="flex">
                   <span className="flex items-center text-base font-semibold text-gray-500 dark:text-gray-400 mr-2">
