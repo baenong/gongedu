@@ -32,6 +32,7 @@ interface UserStatus {
   stored_file_name: string | null;
   ai_flagged: number | null;
   ai_reasoning: string | null;
+  ai_verified: boolean | null;
 }
 
 const MainPage = () => {
@@ -394,6 +395,33 @@ const MainPage = () => {
       success: "정상적으로 삭제되었습니다!",
       error: (error) =>
         error.response?.data?.message || "삭제 중 오류가 발생했습니다.",
+    });
+  };
+
+  // 부서담당 이상이 AI 검증을 다시 실행 (미검증 건 대상)
+  const handleReverifyEnrollment = async (
+    enrollmentId: number,
+    targetName: string,
+  ) => {
+    if (!selectedCourse) return;
+    if (!confirm(`${targetName}님의 제출내역을 AI로 재검증하시겠습니까?`))
+      return;
+
+    const reverifyPromise = api
+      .post(`/enrollments/${enrollmentId}/reverify`)
+      .then(async (res) => {
+        const statusRes = await api.get(
+          `/enrollments/course/${selectedCourse.id}`,
+        );
+        setCourseStatusList(statusRes.data);
+        return res;
+      });
+
+    toast.promise(reverifyPromise, {
+      loading: "AI 재검증 중...",
+      success: (res) => res.data.message,
+      error: (error) =>
+        error.response?.data?.message || "재검증 중 오류가 발생했습니다.",
     });
   };
 
@@ -1196,6 +1224,26 @@ const MainPage = () => {
                                             ⚠️
                                           </span>
                                         )}
+                                        {status.ai_verified === false && (
+                                          <span title="AI 검증이 수행되지 않았습니다.">
+                                            ❓
+                                          </span>
+                                        )}
+                                        {status.ai_verified === false &&
+                                          (user?.role ?? 0) >=
+                                            roles["부서담당"] && (
+                                            <button
+                                              onClick={() =>
+                                                handleReverifyEnrollment(
+                                                  status.enrollment_id!,
+                                                  status.name,
+                                                )
+                                              }
+                                              className="shrink-0 text-sm bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 px-2 py-0.5 rounded transition"
+                                            >
+                                              🔄 재검증
+                                            </button>
+                                          )}
                                       </div>
                                     ) : (
                                       <div className="text-gray-600 line-through">

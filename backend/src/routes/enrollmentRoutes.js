@@ -671,6 +671,7 @@ router.get("/course/:courseId", authenticateToken, (req, res) => {
 
     const course = db.prepare("SELECT name FROM courses WHERE id = ?").get(courseId);
     const enriched = status.map(({ stored_file_name, ai_verification, ...row }) => {
+      const ai_verified = ai_verification !== null && ai_verification !== undefined;
       let ai_reasoning = null;
       if (ai_verification) {
         try {
@@ -681,12 +682,13 @@ router.get("/course/:courseId", authenticateToken, (req, res) => {
       }
 
       if (row.state !== 2 || !stored_file_name) {
-        return { ...row, ai_reasoning };
+        return { ...row, ai_verified, ai_reasoning };
       }
 
       const ext = path.extname(stored_file_name);
       return {
         ...row,
+        ai_verified,
         ai_reasoning,
         file_name: buildDisplayFileName({
           department: row.department,
@@ -801,6 +803,79 @@ router.delete("/:enrollmentId", authenticateToken, (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "서버 오류가 발생했습니다." });
+  }
+});
+
+// (부서담당 이상) AI 검증 재실행
+// POST /api/enrollments/:enrollmentId/reverify
+router.post("/:enrollmentId/reverify", authenticateToken, async (req, res) => {
+  const { enrollmentId } = req.params;
+
+  if (req.user.role < roles["부서담당"]) {
+    return res.status(403).json({ message: "재검증 권한이 없습니다." });
+  }
+
+  try {
+    const enrollment = db
+      .prepare(
+        "SELECT id, user_id, course_id, state, stored_file_name FROM enrollments WHERE id = ?",
+      )
+      .get(enrollmentId);
+
+    if (!enrollment || enrollment.state !== 2 || !enrollment.stored_file_name) {
+      return res
+        .status(404)
+        .json({ message: "재검증할 제출내역을 찾을 수 없습니다." });
+    }
+
+    if (!canAccessEnrollment(enrollment, req.user)) {
+      return res.status(403).json({ message: "재검증 권한이 없습니다." });
+    }
+
+    const filePath = path.join(uploadDir, enrollment.stored_file_name);
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ message: "파일을 찾을 수 없습니다." });
+    }
+
+    const course = db
+      .prepare("SELECT name FROM courses WHERE id = ?")
+      .get(enrollment.course_id);
+    const owner = db
+      .prepare("SELECT name FROM users WHERE id = ?")
+      .get(enrollment.user_id);
+
+    const ext = path.extname(enrollment.stored_file_name);
+    const aiResult = await verifyCertificate({
+      fileBuffer: fs.readFileSync(filePath),
+      mimeType: MIME_TYPES[ext] || "application/octet-stream",
+      courseName: course?.name ?? "",
+      submitterName: owner?.name ?? "",
+    });
+
+    const aiVerification = aiResult ? JSON.stringify(aiResult) : null;
+    const aiFlagged =
+      aiResult &&
+      (!aiResult.isCertificate ||
+        !aiResult.nameMatches ||
+        !aiResult.courseMatches)
+        ? 1
+        : 0;
+
+    db.prepare(
+      "UPDATE enrollments SET ai_verification = ?, ai_flagged = ? WHERE id = ?",
+    ).run(aiVerification, aiFlagged, enrollment.id);
+
+    res.json({
+      message: aiResult
+        ? "재검증이 완료되었습니다."
+        : "AI 검증을 수행하지 못했습니다.",
+      ai_verified: Boolean(aiResult),
+      ai_flagged: aiFlagged,
+      ai_reasoning: aiResult?.reasoning ?? null,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "재검증 중 오류가 발생했습니다." });
   }
 });
 
