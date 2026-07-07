@@ -1,6 +1,7 @@
 import { verifyCertificateWithOpenAI } from "./providers/openaiVerifier.js";
+import { verifyCertificateWithClaude } from "./providers/claudeVerifier.js";
 
-// AI_PROVIDER 환경변수로 구현체를 선택한다. 현재는 openai만 지원.
+// AI_PROVIDER 환경변수로 구현체를 선택한다 ("openai" | "claude").
 // 로컬 sLLM 등 다른 방식을 추가할 때는 여기에 분기를 늘리고
 // 같은 시그니처의 새 provider 모듈을 추가하면 된다.
 export async function verifyCertificate({
@@ -14,6 +15,15 @@ export async function verifyCertificate({
   try {
     if (provider === "openai") {
       return await verifyCertificateWithOpenAI({
+        fileBuffer,
+        mimeType,
+        courseName,
+        submitterName,
+      });
+    }
+
+    if (provider === "claude") {
+      return await verifyCertificateWithClaude({
         fileBuffer,
         mimeType,
         courseName,

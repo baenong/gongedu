@@ -1,5 +1,5 @@
 import OpenAI from "openai";
-import { pdfToPng } from "pdf-to-png-converter";
+import { toImageBase64 } from "../pdfToImage.js";
 
 const RESPONSE_SCHEMA = {
   name: "certificate_verification",
@@ -27,16 +27,6 @@ const RESPONSE_SCHEMA = {
     additionalProperties: false,
   },
 };
-
-// PDF는 Chat Completions의 image_url로 바로 넣을 수 없으므로 첫 페이지를 PNG로 변환한다.
-async function toImageBase64(fileBuffer, mimeType) {
-  if (mimeType === "application/pdf") {
-    const pages = await pdfToPng(fileBuffer, { pagesToProcess: [1] });
-    if (!pages[0]) return null;
-    return { base64: pages[0].content.toString("base64"), mimeType: "image/png" };
-  }
-  return { base64: fileBuffer.toString("base64"), mimeType };
-}
 
 export async function verifyCertificateWithOpenAI({
   fileBuffer,
