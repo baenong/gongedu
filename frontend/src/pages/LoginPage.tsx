@@ -111,7 +111,11 @@ const LoginPage = () => {
         </div>
       </div>
 
-      <div className="mt-8 text-center text-gray-500 text-xs">GONG EDU</div>
+      <div className="mt-8 text-center text-gray-500 text-xs">
+        GONG EDU
+        <br />
+        &copy; 전북특별자치도 군산시 안민수
+      </div>
     </div>
   );
 };
