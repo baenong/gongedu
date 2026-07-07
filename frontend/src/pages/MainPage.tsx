@@ -101,6 +101,7 @@ const MainPage = () => {
   const [filterDepartment, setFilterDepartment] = useState(0);
   const [filterTeam, setFilterTeam] = useState(0);
   const [filterState, setFilterState] = useState("all");
+  const [filterAiStatus, setFilterAiStatus] = useState("all");
 
   const departmentOptions = [
     { value: 0, label: "모든 부서" },
@@ -124,7 +125,20 @@ const MainPage = () => {
       (filterState === "done" && status.state === 2) ||
       (filterState === "yet" && status.state !== 2);
 
-    return matchDepartment && matchTeam && matchState;
+    const matchAiStatus =
+      filterAiStatus === "all" ||
+      (filterAiStatus === "unverified" &&
+        status.state === 2 &&
+        status.ai_verified === false) ||
+      (filterAiStatus === "flagged" &&
+        status.state === 2 &&
+        status.ai_flagged === 1) ||
+      (filterAiStatus === "ok" &&
+        status.state === 2 &&
+        status.ai_verified === true &&
+        status.ai_flagged === 0);
+
+    return matchDepartment && matchTeam && matchState && matchAiStatus;
   });
 
   const yearOptions = [thisYear - 1, thisYear, thisYear + 1, thisYear + 2].map(
@@ -138,6 +152,13 @@ const MainPage = () => {
     { value: "all", label: "전체" },
     { value: "done", label: "🟢 이수완료" },
     { value: "yet", label: "🟠 미이수" },
+  ];
+
+  const aiFilterOptions = [
+    { value: "all", label: "AI검증 전체" },
+    { value: "unverified", label: "❓ 미검증" },
+    { value: "flagged", label: "⚠️ 의심" },
+    { value: "ok", label: "🟢 정상" },
   ];
 
   // 데이터 불러오기
@@ -990,7 +1011,7 @@ const MainPage = () => {
       {/* 상세정보 및 이수현황 모달 */}
       {showDetailModal && selectedCourse && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-lg w-full max-w-4xl max-h-[90vh] shadow-xl flex flex-col">
+          <div className="bg-white dark:bg-gray-800 rounded-lg w-full max-w-6xl max-h-[90vh] shadow-xl flex flex-col">
             {/* 모달 헤더 */}
             <div className="pt-6 pb-3 px-6 border-b border-gray-200 dark:border-gray-700 flex justify-between items-start">
               <div className="flex-1">
@@ -1121,6 +1142,14 @@ const MainPage = () => {
                           options={completeOptions}
                           className="w-32"
                         />
+
+                        {/* AI검증 필터 */}
+                        <Select
+                          value={filterAiStatus}
+                          onChange={(e) => setFilterAiStatus(e.target.value)}
+                          options={aiFilterOptions}
+                          className="w-36"
+                        />
                       </div>
                       {isManager && (
                         <div className="flex gap-1.5">
@@ -1170,6 +1199,8 @@ const MainPage = () => {
                         <TableHeader>팀(계)</TableHeader>
                         <TableHeader>상태</TableHeader>
                         <TableHeader>제출일 / 파일</TableHeader>
+                        <TableHeader>AI 검증</TableHeader>
+                        <TableHeader>관리</TableHeader>
                       </tr>
                     </thead>
                     <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
@@ -1195,103 +1226,125 @@ const MainPage = () => {
                             </td>
                             <td className="px-4 py-3 text-left text-base">
                               {status.state === 2 && status.enrollment_id ? (
-                                <div className="flex items-start justify-between gap-2">
+                                status.file_name &&
+                                status.file_name.length > 0 ? (
                                   <div className="flex flex-col text-left">
                                     {status.submitted_at}
-
-                                    {status.file_name &&
-                                    status.file_name.length > 0 ? (
-                                      <div className="flex items-center gap-1">
-                                        <button
-                                          onClick={() =>
-                                            handleUserFileDownload(
-                                              status.enrollment_id!,
-                                              status.file_name!,
-                                            )
-                                          }
-                                          className={`text-left text-indigo-600 hover:text-indigo-900 hover:underline
-                                                dark:text-indigo-400 dark:hover:text-indigo-500 cursor-pointer`}
-                                        >
-                                          📄 {status.file_name}
-                                        </button>
-                                        {status.ai_flagged === 1 && (
-                                          <span
-                                            title={
-                                              status.ai_reasoning ??
-                                              "AI 검증에서 의심스러운 부분이 발견되었습니다."
-                                            }
-                                          >
-                                            ⚠️
-                                          </span>
-                                        )}
-                                        {status.ai_verified === false && (
-                                          <span title="AI 검증이 수행되지 않았습니다.">
-                                            ❓
-                                          </span>
-                                        )}
-                                        {status.ai_verified === false &&
-                                          (user?.role ?? 0) >=
-                                            roles["부서담당"] && (
-                                            <button
-                                              onClick={() =>
-                                                handleReverifyEnrollment(
-                                                  status.enrollment_id!,
-                                                  status.name,
-                                                )
-                                              }
-                                              className="shrink-0 text-sm bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 px-2 py-0.5 rounded transition"
-                                            >
-                                              🔄 재검증
-                                            </button>
-                                          )}
-                                      </div>
-                                    ) : (
-                                      <div className="text-gray-600 line-through">
-                                        📄 파일명이 없거나 파일이 삭제되었습니다.
-                                      </div>
-                                    )}
-                                  </div>
-                                  {status.user_id !== user?.id && (
                                     <button
                                       onClick={() =>
-                                        handleAdminDeleteEnrollment(
+                                        handleUserFileDownload(
                                           status.enrollment_id!,
-                                          status.name,
+                                          status.file_name!,
                                         )
                                       }
-                                      className="shrink-0 text-base bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 px-3 py-1 rounded transition"
+                                      className={`text-left text-indigo-600 hover:text-indigo-900 hover:underline
+                                                dark:text-indigo-400 dark:hover:text-indigo-500 cursor-pointer`}
                                     >
-                                      ❌ 삭제
+                                      📄 {status.file_name}
                                     </button>
-                                  )}
-                                </div>
-                              ) : status.user_id !== user?.id ? (
-                                <label className="inline-block cursor-pointer text-base text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300 bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 px-3 py-1 rounded transition">
-                                  📎 대신 등록
-                                  <input
-                                    type="file"
-                                    accept=".pdf,.jpg,.png"
-                                    className="hidden"
-                                    onChange={(e) =>
-                                      e.target.files?.[0] &&
-                                      handleProxyUpload(
-                                        status.user_id,
-                                        status.name,
-                                        e.target.files[0],
-                                      )
-                                    }
-                                  />
-                                </label>
+                                  </div>
+                                ) : (
+                                  <div className="flex flex-col text-left">
+                                    {status.submitted_at}
+                                    <div className="text-gray-600 line-through">
+                                      📄 파일명이 없거나 파일이 삭제되었습니다.
+                                    </div>
+                                  </div>
+                                )
                               ) : (
                                 <span className="text-gray-400">-</span>
                               )}
+                            </td>
+                            <td className="px-4 py-3 text-center text-base">
+                              {status.state === 2 && status.enrollment_id ? (
+                                <div className="flex items-center justify-center gap-1">
+                                  {status.ai_flagged === 1 && (
+                                    <span
+                                      title={
+                                        status.ai_reasoning ??
+                                        "AI 검증에서 의심스러운 부분이 발견되었습니다."
+                                      }
+                                    >
+                                      ⚠️
+                                    </span>
+                                  )}
+                                  {status.ai_verified === false && (
+                                    <span title="AI 검증이 수행되지 않았습니다.">
+                                      ❓
+                                    </span>
+                                  )}
+                                  {status.ai_verified === true &&
+                                    status.ai_flagged === 0 && (
+                                      <span title="AI 검증 결과 이상이 발견되지 않았습니다.">
+                                        🟢
+                                      </span>
+                                    )}
+                                </div>
+                              ) : (
+                                <span className="text-gray-400">-</span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-center text-base">
+                              <div className="flex items-center justify-center gap-1.5">
+                                {status.state === 2 && status.enrollment_id ? (
+                                  <>
+                                    {status.ai_verified === false &&
+                                      (user?.role ?? 0) >=
+                                        roles["부서담당"] && (
+                                        <button
+                                          onClick={() =>
+                                            handleReverifyEnrollment(
+                                              status.enrollment_id!,
+                                              status.name,
+                                            )
+                                          }
+                                          className="shrink-0 text-sm bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 px-2 py-0.5 rounded transition"
+                                        >
+                                          🔄 재검증
+                                        </button>
+                                      )}
+                                    {status.user_id !== user?.id && (
+                                      <button
+                                        onClick={() =>
+                                          handleAdminDeleteEnrollment(
+                                            status.enrollment_id!,
+                                            status.name,
+                                          )
+                                        }
+                                        className="shrink-0 text-base bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 px-3 py-1 rounded transition"
+                                      >
+                                        ❌ 삭제
+                                      </button>
+                                    )}
+                                  </>
+                                ) : status.user_id !== user?.id ? (
+                                  <label className="inline-block cursor-pointer text-base text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300 bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 px-3 py-1 rounded transition">
+                                    📎 대신 등록
+                                    <input
+                                      type="file"
+                                      accept=".pdf,.jpg,.png"
+                                      className="hidden"
+                                      onChange={(e) =>
+                                        e.target.files?.[0] &&
+                                        handleProxyUpload(
+                                          status.user_id,
+                                          status.name,
+                                          e.target.files[0],
+                                        )
+                                      }
+                                    />
+                                  </label>
+                                ) : (
+                                  <span className="text-gray-400">-</span>
+                                )}
+                              </div>
                             </td>
                           </tr>
                         ))
                       ) : (
                         <tr>
                           <td
-                            colSpan={isSuperAdmin ? 5 : 4}
+                            colSpan={isSuperAdmin ? 7 : 6}
                             className="text-center py-4 text-gray-500"
                           >
                             조건에 맞는 데이터가 없습니다.
