@@ -107,6 +107,18 @@ export function initDatabase() {
     )
   `);
 
+  // 8. Feedback Likes
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS feedback_likes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      feedback_id INTEGER NOT NULL,
+      user_id INTEGER NOT NULL,
+      UNIQUE (feedback_id, user_id),
+      FOREIGN KEY (feedback_id) REFERENCES feedbacks (id) ON DELETE CASCADE,
+      FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+    )
+  `);
+
   // --- 초기 데이터 주입 ---
 
   // 0. id=0 기본 부서/팀 삽입 (FK 기본값용, 이미 있으면 생략)

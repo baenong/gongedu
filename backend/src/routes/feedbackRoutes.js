@@ -35,6 +35,66 @@ router.post("/", authenticateToken, (req, res) => {
   }
 });
 
+// 다른 사용자들이 남긴 의견 목록 (익명 — 시간/내용/좋아요만 노출)
+// GET /api/feedback/public
+router.get("/public", authenticateToken, (req, res) => {
+  try {
+    const feedbacks = db
+      .prepare(
+        `
+        SELECT f.id, f.content, f.created_at,
+          (SELECT COUNT(*) FROM feedback_likes WHERE feedback_id = f.id) as like_count,
+          EXISTS(
+            SELECT 1 FROM feedback_likes WHERE feedback_id = f.id AND user_id = ?
+          ) as liked_by_me
+        FROM feedbacks f
+        ORDER BY f.created_at DESC
+        `,
+      )
+      .all(req.user.id);
+    res.json(feedbacks);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "서버 오류가 발생했습니다." });
+  }
+});
+
+// 의견에 좋아요 토글
+// POST /api/feedback/:id/like
+router.post("/:id/like", authenticateToken, (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const feedback = db.prepare("SELECT id FROM feedbacks WHERE id = ?").get(id);
+    if (!feedback) {
+      return res.status(404).json({ message: "의견을 찾을 수 없습니다." });
+    }
+
+    const existing = db
+      .prepare(
+        "SELECT id FROM feedback_likes WHERE feedback_id = ? AND user_id = ?",
+      )
+      .get(id, req.user.id);
+
+    if (existing) {
+      db.prepare("DELETE FROM feedback_likes WHERE id = ?").run(existing.id);
+    } else {
+      db.prepare(
+        "INSERT INTO feedback_likes (feedback_id, user_id) VALUES (?, ?)",
+      ).run(id, req.user.id);
+    }
+
+    const { count } = db
+      .prepare("SELECT COUNT(*) as count FROM feedback_likes WHERE feedback_id = ?")
+      .get(id);
+
+    res.json({ liked: !existing, like_count: count });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "서버 오류가 발생했습니다." });
+  }
+});
+
 // (시스템관리자용) 기능개선 의견 목록 조회
 // GET /api/feedback
 router.get("/", authenticateToken, (req, res) => {

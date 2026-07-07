@@ -60,3 +60,12 @@ export interface Feedback {
   checked: number;
   created_at: string;
 }
+
+// 익명 공개용 기능개선 의견 타입 (다른 사용자가 볼 수 있는 형태)
+export interface PublicFeedback {
+  id: number;
+  content: string;
+  created_at: string;
+  like_count: number;
+  liked_by_me: number;
+}
