@@ -49,3 +49,14 @@ export interface Team {
   orderIndex: number;
   departmentId: number;
 }
+
+// 기능개선 의견 타입
+export interface Feedback {
+  id: number;
+  user_id: number | null;
+  user_name: string | null;
+  department: string | null;
+  content: string;
+  checked: number;
+  created_at: string;
+}

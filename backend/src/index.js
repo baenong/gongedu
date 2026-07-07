@@ -14,6 +14,7 @@ import courseRoutes from "./routes/courseRoutes.js";
 import enrollmentRoutes from "./routes/enrollmentRoutes.js";
 import settingRoutes from "./routes/settingRoutes.js";
 import departmentRoutes from "./routes/departmentRoutes.js";
+import feedbackRoutes from "./routes/feedbackRoutes.js";
 import { checkIpWhitelist } from "./middlewares/ipMiddleware.js";
 // import { initBackupScheduler } from "./utils/backupScheduler.js";
 
@@ -86,6 +87,7 @@ app.use("/api/courses", courseRoutes);
 app.use("/api/enrollments", enrollmentRoutes);
 app.use("/api/settings", settingRoutes);
 app.use("/api/departments", departmentRoutes);
+app.use("/api/feedback", feedbackRoutes);
 
 app.get("/", (req, res) => {
   res.send("Gong Edu is running...");

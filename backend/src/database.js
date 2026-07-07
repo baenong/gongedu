@@ -93,6 +93,20 @@ export function initDatabase() {
     )
   `);
 
+  // 7. Feedback (기능개선 의견)
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS feedbacks (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER,
+      user_name TEXT,
+      department TEXT,
+      content TEXT NOT NULL,
+      checked INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE SET NULL
+    )
+  `);
+
   // --- 초기 데이터 주입 ---
 
   // 0. id=0 기본 부서/팀 삽입 (FK 기본값용, 이미 있으면 생략)
@@ -175,6 +189,12 @@ function migrateDatabase() {
     db.exec(
       "ALTER TABLE enrollments ADD COLUMN ai_flagged INTEGER DEFAULT 0",
     );
+  }
+
+  const feedbackColumns = db.prepare("PRAGMA table_info(feedbacks)").all();
+  const hasChecked = feedbackColumns.some((col) => col.name === "checked");
+  if (!hasChecked) {
+    db.exec("ALTER TABLE feedbacks ADD COLUMN checked INTEGER DEFAULT 0");
   }
 }
 

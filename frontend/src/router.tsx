@@ -5,7 +5,9 @@ import LoginPage from "./pages/LoginPage";
 import MainPage from "./pages/MainPage";
 import AdminUserPage from "./pages/AdminUserPage";
 import SettingPage from "./pages/SettingPage";
+import FeedbackAdminPage from "./pages/FeedbackAdminPage";
 import ErrorPage from "./pages/ErrorPage";
+import { roles } from "./utils/constants";
 
 const router = createBrowserRouter([
   {
@@ -33,6 +35,14 @@ const router = createBrowserRouter([
           { path: "users", element: <AdminUserPage /> },
           { path: "settings", element: <SettingPage /> },
         ],
+      },
+      // 시스템관리자만 접근 가능
+      {
+        path: "admin",
+        element: (
+          <ProtectedRoute requireAdmin={true} minRole={roles["시스템관리자"]} />
+        ),
+        children: [{ path: "feedback", element: <FeedbackAdminPage /> }],
       },
     ],
   },

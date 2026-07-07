@@ -7,6 +7,7 @@ import FormLabel from "./FormLabel";
 import TextInput from "./TextInput";
 import toast, { Toaster } from "react-hot-toast";
 import HelpModal from "./HelpModal";
+import FeedbackModal from "./FeedbackModal";
 import { getErrorMessage } from "../utils/errorUtils";
 import { roles } from "../utils/constants";
 import icoLogout from "../assets/icon/ico_logout.svg";
@@ -24,6 +25,7 @@ const Layout = () => {
   });
 
   const [showHelp, setShowHelp] = useState(false);
+  const [showFeedback, setShowFeedback] = useState(false);
 
   const roleIcons = ["👤", "🛡️", "⭐", "📚", "👑", "🔝"];
 
@@ -102,6 +104,31 @@ const Layout = () => {
                 className="h-16"
               />
             </Link>
+
+            <button
+              onClick={() => setShowFeedback(true)}
+              className={`fixed bottom-28 right-12
+                        bg-emerald-600 hover:bg-emerald-700 text-white
+                          p-4 rounded-full shadow-lg hover:shadow-xl
+                          opacity-30 hover:opacity-100
+                          transition-all z-50 flex items-center justify-center group`}
+              title="의견작성"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={1.5}
+                stroke="currentColor"
+                className="w-6 h-6"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"
+                />
+              </svg>
+            </button>
 
             <button
               onClick={() => setShowHelp(true)}
@@ -194,6 +221,14 @@ const Layout = () => {
                       >
                         설정
                       </Link>
+                      {user.role === roles["시스템관리자"] && (
+                        <Link
+                          to="/admin/feedback"
+                          className="text-base font-medium text-gray-600 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition"
+                        >
+                          기능개선 의견
+                        </Link>
+                      )}
                     </div>
                   )}
 
@@ -301,6 +336,11 @@ const Layout = () => {
 
       {/* --- 도움말 모달 --- */}
       {showHelp && <HelpModal onClose={() => setShowHelp(false)} />}
+
+      {/* --- 의견작성 모달 --- */}
+      {showFeedback && (
+        <FeedbackModal onClose={() => setShowFeedback(false)} />
+      )}
     </div>
   );
 };
