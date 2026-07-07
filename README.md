@@ -9,7 +9,7 @@
   <br><i>"공직자 1시간은, 5200만 시간 가치"</i>
   <br>
   <br><strong>공무원 필수교육, 이제 한 곳에서 관리합니다.</strong>
-  <br>각 직원이 이수증을 올리고, 담당자는 한 눈에 이수 현황을 파악할 수 있습니다.
+  <br>각 직원이 이수증을 올리면 AI가 자동으로 검수하고, 담당자는 한 눈에 이수 현황을 파악할 수 있습니다.
   <br><br> - 전북특별자치도 군산시 행정지원과 안민수 -
 </p>
 
@@ -18,7 +18,7 @@
   <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/Typescript-5.9.3-blue.svg" /></a>
   <img src="https://img.shields.io/badge/Node-22-339933.svg?logo=node.js&logoColor=white" />
   <a href="https://www.docker.com/"><img src="https://img.shields.io/badge/Docker-배포-2496ED.svg?logo=docker&logoColor=white" /></a>
-  <img src="https://img.shields.io/badge/version-0.9.5-orange.svg"/>
+  <img src="https://img.shields.io/badge/version-0.9.6-orange.svg"/>
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License: MIT" /></a>
 </p>
 
@@ -32,7 +32,9 @@
 
 <span style="font-style:italic;"><strong>"내가 이걸 들었던가? 수료증을 냈던가?"</strong></span>
 
-업무만으로도 바쁜 공무원들이 매번 체크하느라 낭비되는 시간들이 아까워 2025년 하반기에 개발하여 팀 내에서 운영하던 시스템을 수정하여 배포합니다.
+업무만으로도 바쁜 공무원들이 매번 체크하느라 낭비되는 시간들이 아까워 2025년 하반기에 개발하여 팀 내에서 운영하던 시스템을 좀 더 일반적으로 사용할 수 있도록 수정하여 배포합니다.
+
+제출된 수료증이 실제로 해당 교육의, 본인 명의 수료증인지 담당자가 일일이 열어보고 확인하는 부담을 경감시키고자 AI가 이를 자동으로 1차 검증해주는 기능을 추가했습니다.
 
 현재 기관 시범 운영 예정으로, 운영 중 발견되는 문제나 피드백을 반영해 지속적으로 개정할 예정입니다.
 
@@ -63,6 +65,18 @@
 | 도입 후 | 약 5분/부서     | **100시간** (5분 × 15교육 × 80부서)    |
 
 > 비슷한 규모의 기관이라면 **연간 약 1,100시간**을 절감할 수 있을 것으로 기대됩니다.
+
+### AI 기반 수료증 자동 검증
+
+담당자가 제출된 수료증 파일을 직접 열어 진위와 명의를 확인하던 과정을 AI가 대신합니다.
+
+- 수료증 업로드 시 AI가 파일(이미지·PDF)을 읽고 다음 세 가지를 자동으로 판단합니다.
+  1. 실제 수료증/이수증이 맞는지
+  2. 신청한 교육과정과 일치하는지
+  3. 제출자 본인 명의가 맞는지
+- 판단 결과 의심스러운 부분이 있으면 이수 현황 화면에 경고로 표시되어, 담당자는 이상이 있는 건만 골라 확인하면 됩니다.
+- AI 서비스 장애나 오판단 가능성을 감안해, 검증에 실패하거나 시간이 걸리더라도 수료증 제출 자체는 항상 정상적으로 처리됩니다. AI는 어디까지나 담당자의 확인 부담을 줄여주는 보조 수단이며, 최종 판단과 책임은 담당자에게 있습니다.
+- 특정 AI 제공사에 종속되지 않도록 내부적으로 OpenAI, Claude 등 여러 제공자를 설정만으로 바꿔 사용할 수 있게 설계했습니다.
 
 ---
 
