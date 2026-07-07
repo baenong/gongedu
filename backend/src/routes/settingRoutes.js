@@ -2,11 +2,15 @@ import express from "express";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import OpenAI from "openai";
+import Anthropic from "@anthropic-ai/sdk";
 import db from "../database.js";
 import {
   authenticateToken,
   requireAdmin,
+  requireSystemAdmin,
 } from "../middlewares/authMiddleware.js";
+import { getSetting } from "../utils/settings.js";
 
 const router = express.Router();
 const __filename = fileURLToPath(import.meta.url);
@@ -123,5 +127,96 @@ router.post("/", authenticateToken, requireAdmin, (req, res) => {
     res.status(500).json({ message: "서버 오류가 발생했습니다." });
   }
 });
+
+// GET /api/settings/ai - AI 검증 설정 조회 (API 키는 설정 여부만 반환)
+router.get("/ai", authenticateToken, requireSystemAdmin, (req, res) => {
+  try {
+    res.json({
+      provider: getSetting("ai_provider") || "",
+      openaiModel: getSetting("ai_openai_model") || "",
+      anthropicModel: getSetting("ai_anthropic_model") || "",
+      hasOpenaiKey: Boolean(
+        getSetting("ai_openai_api_key") || process.env.OPENAI_API_KEY,
+      ),
+      hasAnthropicKey: Boolean(
+        getSetting("ai_anthropic_api_key") || process.env.ANTHROPIC_API_KEY,
+      ),
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "서버 오류가 발생했습니다." });
+  }
+});
+
+// POST /api/settings/ai - AI 검증 설정 저장
+// API 키 입력란을 비워두면 기존에 저장된 값을 그대로 유지한다.
+router.post("/ai", authenticateToken, requireSystemAdmin, (req, res) => {
+  const { provider, openaiModel, anthropicModel, openaiApiKey, anthropicApiKey } =
+    req.body;
+
+  try {
+    const upsert = db.prepare(`
+      INSERT INTO settings (key, value) VALUES (?, ?)
+      ON CONFLICT(key) DO UPDATE SET value = excluded.value
+    `);
+    upsert.run("ai_provider", provider ?? "");
+    upsert.run("ai_openai_model", openaiModel ?? "");
+    upsert.run("ai_anthropic_model", anthropicModel ?? "");
+    if (openaiApiKey) upsert.run("ai_openai_api_key", openaiApiKey);
+    if (anthropicApiKey) upsert.run("ai_anthropic_api_key", anthropicApiKey);
+
+    res.json({ message: "AI 설정이 저장되었습니다." });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "서버 오류가 발생했습니다." });
+  }
+});
+
+// POST /api/settings/ai/models - 제공자의 사용 가능한 모델 목록 조회
+// apiKey를 body로 직접 받으면(아직 저장 전인 입력값) 그 키로 조회하고,
+// 없으면 저장된 값 또는 .env 값으로 폴백한다.
+router.post(
+  "/ai/models",
+  authenticateToken,
+  requireSystemAdmin,
+  async (req, res) => {
+    const { provider, apiKey } = req.body;
+
+    try {
+      if (provider === "openai") {
+        const key =
+          apiKey || getSetting("ai_openai_api_key") || process.env.OPENAI_API_KEY;
+        if (!key) {
+          return res.status(400).json({ message: "API 키를 먼저 입력하세요." });
+        }
+        const client = new OpenAI({ apiKey: key });
+        const list = await client.models.list();
+        const models = list.data.map((m) => m.id).sort();
+        return res.json({ models });
+      }
+
+      if (provider === "claude") {
+        const key =
+          apiKey ||
+          getSetting("ai_anthropic_api_key") ||
+          process.env.ANTHROPIC_API_KEY;
+        if (!key) {
+          return res.status(400).json({ message: "API 키를 먼저 입력하세요." });
+        }
+        const client = new Anthropic({ apiKey: key });
+        const list = await client.models.list();
+        const models = list.data.map((m) => m.id).sort();
+        return res.json({ models });
+      }
+
+      return res.status(400).json({ message: "지원하지 않는 제공자입니다." });
+    } catch (error) {
+      console.error("모델 목록 조회 실패:", error);
+      res
+        .status(502)
+        .json({ message: "모델 목록을 가져오지 못했습니다. API 키를 확인하세요." });
+    }
+  },
+);
 
 export default router;

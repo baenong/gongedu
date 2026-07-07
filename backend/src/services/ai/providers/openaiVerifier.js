@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import { toImageBase64 } from "../pdfToImage.js";
+import { getSetting } from "../../../utils/settings.js";
 
 const RESPONSE_SCHEMA = {
   name: "certificate_verification",
@@ -34,7 +35,8 @@ export async function verifyCertificateWithOpenAI({
   courseName,
   submitterName,
 }) {
-  if (!process.env.OPENAI_API_KEY) {
+  const apiKey = getSetting("ai_openai_api_key") || process.env.OPENAI_API_KEY;
+  if (!apiKey) {
     console.warn("OPENAI_API_KEY가 설정되지 않아 AI 검증을 건너뜁니다.");
     return null;
   }
@@ -42,10 +44,10 @@ export async function verifyCertificateWithOpenAI({
   const image = await toImageBase64(fileBuffer, mimeType);
   if (!image) return null;
 
-  const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  const client = new OpenAI({ apiKey });
 
   const response = await client.chat.completions.create({
-    model: process.env.OPENAI_MODEL || "gpt-4o",
+    model: getSetting("ai_openai_model") || process.env.OPENAI_MODEL || "gpt-4o",
     response_format: { type: "json_schema", json_schema: RESPONSE_SCHEMA },
     messages: [
       {

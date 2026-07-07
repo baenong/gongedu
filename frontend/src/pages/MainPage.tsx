@@ -202,6 +202,15 @@ const MainPage = () => {
 
   // --- 사용자 기능 ---
 
+  // AI 검증이 API 키 미설정으로 건너뛰어졌을 때 관리자에게만 안내
+  const warnIfAiKeyMissing = (aiSkipReason: string | null | undefined) => {
+    if (aiSkipReason !== "missing_api_key" || !isManager) return;
+    toast(
+      "AI 검증용 API 키가 설정되지 않아 자동 검증이 건너뛰어졌습니다. 설정 화면에서 API 키를 등록해주세요.",
+      { icon: "⚠️", duration: 6000 },
+    );
+  };
+
   const handleFileUpload = async (courseId: number, file: File) => {
     if (
       !confirm(
@@ -218,8 +227,9 @@ const MainPage = () => {
       }),
       {
         loading: "파일 업로드 중...",
-        success: () => {
+        success: (res) => {
           fetchData();
+          warnIfAiKeyMissing(res.data.aiSkipReason);
           return "정상적으로 제출되었습니다!";
         },
         error: (error) =>
@@ -386,7 +396,10 @@ const MainPage = () => {
 
     toast.promise(uploadPromise, {
       loading: "등록 중...",
-      success: "정상적으로 등록되었습니다!",
+      success: (res) => {
+        warnIfAiKeyMissing(res.data.aiSkipReason);
+        return "정상적으로 등록되었습니다!";
+      },
       error: (error) => error.response?.data?.message || "등록을 실패했습니다.",
     });
   };
@@ -440,7 +453,10 @@ const MainPage = () => {
 
     toast.promise(reverifyPromise, {
       loading: "AI 재검증 중...",
-      success: (res) => res.data.message,
+      success: (res) => {
+        warnIfAiKeyMissing(res.data.aiSkipReason);
+        return res.data.message;
+      },
       error: (error) =>
         error.response?.data?.message || "재검증 중 오류가 발생했습니다.",
     });

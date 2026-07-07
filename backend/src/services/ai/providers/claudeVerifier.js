@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { toImageBase64 } from "../pdfToImage.js";
+import { getSetting } from "../../../utils/settings.js";
 
 const RESPONSE_SCHEMA = {
   type: "object",
@@ -30,7 +31,9 @@ export async function verifyCertificateWithClaude({
   courseName,
   submitterName,
 }) {
-  if (!process.env.ANTHROPIC_API_KEY) {
+  const apiKey =
+    getSetting("ai_anthropic_api_key") || process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) {
     console.warn("ANTHROPIC_API_KEY가 설정되지 않아 AI 검증을 건너뜁니다.");
     return null;
   }
@@ -38,10 +41,13 @@ export async function verifyCertificateWithClaude({
   const image = await toImageBase64(fileBuffer, mimeType);
   if (!image) return null;
 
-  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+  const client = new Anthropic({ apiKey });
 
   const response = await client.messages.create({
-    model: process.env.ANTHROPIC_MODEL || "claude-haiku-4-5",
+    model:
+      getSetting("ai_anthropic_model") ||
+      process.env.ANTHROPIC_MODEL ||
+      "claude-haiku-4-5",
     max_tokens: 1024,
     output_config: {
       format: { type: "json_schema", schema: RESPONSE_SCHEMA },

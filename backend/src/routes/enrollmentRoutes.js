@@ -17,7 +17,10 @@ import {
   buildDisplayFileName,
 } from "../utils/enrollmentFileName.js";
 import { roles } from "../../constants.js";
-import { verifyCertificate } from "../services/ai/verifyCertificate.js";
+import {
+  verifyCertificate,
+  isAiConfigured,
+} from "../services/ai/verifyCertificate.js";
 
 const router = express.Router();
 const __filename = fileURLToPath(import.meta.url);
@@ -319,7 +322,10 @@ router.post(
         );
       }
 
-      res.json({ message: "수료증이 제출되었습니다." });
+      res.json({
+        message: "수료증이 제출되었습니다.",
+        aiSkipReason: !aiResult && !isAiConfigured() ? "missing_api_key" : null,
+      });
     } catch (error) {
       // rename 전이면 tempPath, 후면 finalPath를 정리
       const cleanupPath = renamedToFinal ? finalPath : tempPath;
@@ -872,6 +878,7 @@ router.post("/:enrollmentId/reverify", authenticateToken, async (req, res) => {
       ai_verified: Boolean(aiResult),
       ai_flagged: aiFlagged,
       ai_reasoning: aiResult?.reasoning ?? null,
+      aiSkipReason: !aiResult && !isAiConfigured() ? "missing_api_key" : null,
     });
   } catch (error) {
     console.error(error);

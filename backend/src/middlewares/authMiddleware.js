@@ -60,3 +60,11 @@ export const requireAdmin = (req, res, next) => {
   }
   next();
 };
+
+// 시스템관리자 전용 권한 확인 (API 키 등 민감한 설정에 사용)
+export const requireSystemAdmin = (req, res, next) => {
+  if (!req.user || req.user.role !== roles["시스템관리자"]) {
+    return res.status(403).json({ message: "시스템관리자 권한이 필요합니다." });
+  }
+  next();
+};
