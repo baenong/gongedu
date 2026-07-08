@@ -95,10 +95,10 @@ router.post("/:id/like", authenticateToken, (req, res) => {
   }
 });
 
-// (시스템관리자용) 기능개선 의견 목록 조회
+// (총괄담당 이상용) 기능개선 의견 목록 조회
 // GET /api/feedback
 router.get("/", authenticateToken, (req, res) => {
-  if (req.user.role !== roles["시스템관리자"]) {
+  if (req.user.role < roles["총괄담당"]) {
     return res.status(403).json({ message: "권한이 없습니다." });
   }
 
@@ -113,10 +113,10 @@ router.get("/", authenticateToken, (req, res) => {
   }
 });
 
-// (시스템관리자용) 기능개선 의견 확인 여부 토글
+// (총괄담당 이상용) 기능개선 의견 확인 여부 토글
 // PATCH /api/feedback/:id/checked
 router.patch("/:id/checked", authenticateToken, (req, res) => {
-  if (req.user.role !== roles["시스템관리자"]) {
+  if (req.user.role < roles["총괄담당"]) {
     return res.status(403).json({ message: "권한이 없습니다." });
   }
 

@@ -215,13 +215,15 @@ const Layout = () => {
                       >
                         직원관리
                       </Link>
-                      <Link
-                        to="/admin/settings"
-                        className="text-base font-medium text-gray-600 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition"
-                      >
-                        설정
-                      </Link>
-                      {user.role === roles["시스템관리자"] && (
+                      {user.role >= roles["총괄담당"] && (
+                        <Link
+                          to="/admin/settings"
+                          className="text-base font-medium text-gray-600 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition"
+                        >
+                          설정
+                        </Link>
+                      )}
+                      {user.role >= roles["총괄담당"] && (
                         <Link
                           to="/admin/feedback"
                           className="text-base font-medium text-gray-600 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition"

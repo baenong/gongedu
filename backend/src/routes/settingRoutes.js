@@ -7,8 +7,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import db from "../database.js";
 import {
   authenticateToken,
-  requireAdmin,
-  requireSystemAdmin,
+  requireSeniorManager,
 } from "../middlewares/authMiddleware.js";
 import { getSetting } from "../utils/settings.js";
 
@@ -18,7 +17,7 @@ const __dirname = path.dirname(__filename);
 const uploadDir = path.join(__dirname, `../../uploads`);
 
 // DELETE /api/settings/cleanup
-router.delete("/cleanup", authenticateToken, requireAdmin, (req, res) => {
+router.delete("/cleanup", authenticateToken, requireSeniorManager, (req, res) => {
   const { year, mode } = req.body; // mode: 'files_only'(파일만) 또는 'all'(데이터포함)
 
   if (!year) {
@@ -100,11 +99,15 @@ router.delete("/cleanup", authenticateToken, requireAdmin, (req, res) => {
 });
 
 // GET /api/settings
-router.get("/", authenticateToken, requireAdmin, (req, res) => {
+router.get("/", authenticateToken, requireSeniorManager, (req, res) => {
   try {
     const settings = db.prepare("SELECT * FROM settings").all();
     const settingsObj = {};
-    settings.forEach((item) => (settingsObj[item.key] = item.value));
+    // AI API 키는 /api/settings/ai가 hasOpenaiKey/hasAnthropicKey로만 노출하도록
+    // 설계되어 있으므로, 이 범용 조회 엔드포인트에서는 원문 키 값을 제외한다.
+    settings
+      .filter((item) => !item.key.endsWith("_api_key"))
+      .forEach((item) => (settingsObj[item.key] = item.value));
     res.json(settingsObj);
   } catch (error) {
     console.error(error);
@@ -113,7 +116,7 @@ router.get("/", authenticateToken, requireAdmin, (req, res) => {
 });
 
 // POST /api/settings
-router.post("/", authenticateToken, requireAdmin, (req, res) => {
+router.post("/", authenticateToken, requireSeniorManager, (req, res) => {
   const { key, value } = req.body;
   try {
     const stmt = db.prepare(`
@@ -129,7 +132,7 @@ router.post("/", authenticateToken, requireAdmin, (req, res) => {
 });
 
 // GET /api/settings/ai - AI 검증 설정 조회 (API 키는 설정 여부만 반환)
-router.get("/ai", authenticateToken, requireSystemAdmin, (req, res) => {
+router.get("/ai", authenticateToken, requireSeniorManager, (req, res) => {
   try {
     res.json({
       provider: getSetting("ai_provider") || "",
@@ -150,7 +153,7 @@ router.get("/ai", authenticateToken, requireSystemAdmin, (req, res) => {
 
 // POST /api/settings/ai - AI 검증 설정 저장
 // API 키 입력란을 비워두면 기존에 저장된 값을 그대로 유지한다.
-router.post("/ai", authenticateToken, requireSystemAdmin, (req, res) => {
+router.post("/ai", authenticateToken, requireSeniorManager, (req, res) => {
   const { provider, openaiModel, anthropicModel, openaiApiKey, anthropicApiKey } =
     req.body;
 
@@ -178,7 +181,7 @@ router.post("/ai", authenticateToken, requireSystemAdmin, (req, res) => {
 router.post(
   "/ai/models",
   authenticateToken,
-  requireSystemAdmin,
+  requireSeniorManager,
   async (req, res) => {
     const { provider, apiKey } = req.body;
 

@@ -17,11 +17,11 @@ const btnFrameStyle = "flex flex-wrap justify-between";
 
 const SettingPage = () => {
   const { user } = useAuthStore();
-  const isSystemAdmin = user?.role === roles["시스템관리자"];
+  const canManageAiSettings = (user?.role ?? 0) >= roles["총괄담당"];
 
   const [settings, setSettings] = useState({ ipWhitelist: "" });
 
-  // AI 검증 설정 (시스템관리자 전용)
+  // AI 검증 설정 (총괄담당 이상 전용)
   const [aiSettings, setAiSettings] = useState({
     provider: "openai" as "openai" | "claude" | "local",
     openaiModel: "",
@@ -307,7 +307,7 @@ const SettingPage = () => {
     })();
     //fetchSettings();
 
-    if (isSystemAdmin) {
+    if (canManageAiSettings) {
       (async () => {
         try {
           const response = await api.get("/settings/ai");
@@ -820,7 +820,7 @@ const SettingPage = () => {
         </div>
       </section>
 
-      {isSystemAdmin && (
+      {canManageAiSettings && (
         <section className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 border border-gray-200 dark:border-gray-700 transition-colors">
           <h2 className="text-xl font-semibold text-gray-800 dark:text-white mb-4">
             AI 수료증 검증 설정

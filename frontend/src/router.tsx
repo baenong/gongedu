@@ -31,18 +31,18 @@ const router = createBrowserRouter([
       {
         path: "admin",
         element: <ProtectedRoute requireAdmin={true} />,
-        children: [
-          { path: "users", element: <AdminUserPage /> },
-          { path: "settings", element: <SettingPage /> },
-        ],
+        children: [{ path: "users", element: <AdminUserPage /> }],
       },
-      // 시스템관리자만 접근 가능
+      // 총괄담당 이상만 접근 가능 (설정 화면, 기능개선 의견 관리)
       {
         path: "admin",
         element: (
-          <ProtectedRoute requireAdmin={true} minRole={roles["시스템관리자"]} />
+          <ProtectedRoute requireAdmin={true} minRole={roles["총괄담당"]} />
         ),
-        children: [{ path: "feedback", element: <FeedbackAdminPage /> }],
+        children: [
+          { path: "settings", element: <SettingPage /> },
+          { path: "feedback", element: <FeedbackAdminPage /> },
+        ],
       },
     ],
   },

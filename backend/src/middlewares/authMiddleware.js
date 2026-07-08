@@ -61,10 +61,10 @@ export const requireAdmin = (req, res, next) => {
   next();
 };
 
-// 시스템관리자 전용 권한 확인 (API 키 등 민감한 설정에 사용)
-export const requireSystemAdmin = (req, res, next) => {
-  if (!req.user || req.user.role !== roles["시스템관리자"]) {
-    return res.status(403).json({ message: "시스템관리자 권한이 필요합니다." });
+// 총괄담당 이상 권한 확인 (설정 화면 전반, AI 검증 API 키 등 운영 설정에 사용)
+export const requireSeniorManager = (req, res, next) => {
+  if (!req.user || req.user.role < roles["총괄담당"]) {
+    return res.status(403).json({ message: "총괄담당 이상 권한이 필요합니다." });
   }
   next();
 };
