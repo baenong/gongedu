@@ -103,10 +103,14 @@ router.get("/", authenticateToken, requireSeniorManager, (req, res) => {
   try {
     const settings = db.prepare("SELECT * FROM settings").all();
     const settingsObj = {};
-    // AI API 키는 /api/settings/ai가 hasOpenaiKey/hasAnthropicKey로만 노출하도록
-    // 설계되어 있으므로, 이 범용 조회 엔드포인트에서는 원문 키 값을 제외한다.
+    // API 키 등 민감한 값은 /api/settings/ai가 hasOpenaiKey/hasAnthropicKey처럼
+    // boolean으로만 노출하도록 설계되어 있으므로, 이 범용 조회 엔드포인트에서는
+    // 이런 성격의 키가 앞으로 추가되더라도 원문 값이 새 나가지 않도록 접미사로 넓게 거른다.
+    const SENSITIVE_KEY_SUFFIXES = ["_key", "_secret", "_token", "_password"];
     settings
-      .filter((item) => !item.key.endsWith("_api_key"))
+      .filter(
+        (item) => !SENSITIVE_KEY_SUFFIXES.some((suffix) => item.key.endsWith(suffix)),
+      )
       .forEach((item) => (settingsObj[item.key] = item.value));
     res.json(settingsObj);
   } catch (error) {

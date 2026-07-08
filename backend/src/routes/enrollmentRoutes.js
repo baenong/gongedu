@@ -376,6 +376,7 @@ router.get(
   (req, res) => {
     try {
       const { userId } = req.params;
+      const targetUserId = Number(userId);
       const { year } = req.query;
 
       let query = `
@@ -404,20 +405,31 @@ router.get(
         .prepare("SELECT name, department, team FROM users WHERE id = ?")
         .get(userId);
 
-      const enriched = status.map(({ stored_file_name, ...row }) => {
-        if (row.state !== 2 || !stored_file_name || !owner) return row;
-        const ext = path.extname(stored_file_name);
-        return {
-          ...row,
-          file_name: buildDisplayFileName({
-            department: owner.department,
-            team: owner.team,
-            name: owner.name,
-            courseName: row.course_name,
-            ext,
-          }),
-        };
-      });
+      // 본인 조회는 항상 허용하고, 그 외에는 canAccessEnrollment와 동일한 기준으로
+      // 과정 단위 스코프를 건다: 교육담당은 본인이 등록한 과정만, 부서담당/팀계담당은
+      // 대상자가 자기 부서/팀일 때만, 총괄담당 이상은 전체를 볼 수 있다.
+      // 스코프 밖의 과정은 일반직원이 다른 사람 현황을 볼 때와 동일하게 제외한다.
+      const enriched = status
+        .filter((row) =>
+          canAccessEnrollment(
+            { user_id: targetUserId, course_id: row.course_id },
+            req.user,
+          ),
+        )
+        .map(({ stored_file_name, ...row }) => {
+          if (row.state !== 2 || !stored_file_name || !owner) return row;
+          const ext = path.extname(stored_file_name);
+          return {
+            ...row,
+            file_name: buildDisplayFileName({
+              department: owner.department,
+              team: owner.team,
+              name: owner.name,
+              courseName: row.course_name,
+              ext,
+            }),
+          };
+        });
 
       res.json(enriched);
     } catch (error) {

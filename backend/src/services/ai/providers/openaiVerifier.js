@@ -59,7 +59,19 @@ export async function verifyCertificateWithOpenAI({
     ],
   });
 
-  const content = response.choices[0]?.message?.content;
+  const choice = response.choices[0];
+  if (choice?.finish_reason === "length") {
+    console.error(
+      "OpenAI AI 검증 응답이 length(max_tokens)에 도달해 잘렸습니다. reasoning이 예상보다 길었을 수 있습니다.",
+    );
+    return null;
+  }
+  if (choice?.finish_reason === "content_filter") {
+    console.error("OpenAI가 AI 검증 요청을 필터링했습니다(finish_reason: content_filter).");
+    return null;
+  }
+
+  const content = choice?.message?.content;
   if (!content) return null;
   return JSON.parse(content);
 }
