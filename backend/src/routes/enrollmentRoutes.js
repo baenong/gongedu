@@ -473,7 +473,7 @@ router.get("/course/:courseId/download-zip", authenticateToken, (req, res) => {
       SELECT e.stored_file_name, e.file_name, u.department, u.team, u.name as user_name
       FROM enrollments e
       JOIN users u ON e.user_id = u.id
-      WHERE u.role < ${roles["교육담당"]} AND e.course_id = ? AND e.stored_file_name IS NOT NULL
+      WHERE u.role < ${roles["총괄담당"]} AND e.course_id = ? AND e.stored_file_name IS NOT NULL
     `;
 
     const params = [courseId];
@@ -700,7 +700,7 @@ router.get("/course/:courseId", authenticateToken, (req, res) => {
              e.ai_verification, e.ai_flagged
       FROM users u
       LEFT JOIN enrollments e ON u.id = e.user_id AND e.course_id = ? 
-      WHERE u.role < ${roles["시스템관리자"]}
+      WHERE u.role < ${roles["총괄담당"]}
       `;
 
     const params = [courseId];

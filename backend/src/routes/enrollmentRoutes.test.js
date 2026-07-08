@@ -249,3 +249,65 @@ describe("수료증 재제출 시 중복 등록 방지", () => {
     expect(rows).toHaveLength(1);
   });
 });
+
+describe("GET /course/:courseId 제출대상 범위 (총괄담당 이상 제외)", () => {
+  let adminToken;
+  let courseId;
+  let educatorId;
+  let seniorManagerId;
+
+  beforeAll(async () => {
+    adminToken = await loginAsAdmin();
+
+    educatorId = await createUser(adminToken, {
+      username: "headcount-educator",
+      role: 4,
+    });
+    seniorManagerId = await createUser(adminToken, {
+      username: "headcount-senior",
+      role: 5,
+    });
+
+    const courseRes = await request(app)
+      .post("/api/courses")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({
+        year: 2026,
+        name: "제출대상 범위 테스트 교육",
+        end_date: "2026-12-31",
+        detail: "",
+        department_id: 0,
+      });
+    courseId = courseRes.body.id;
+  });
+
+  it("상세 제출현황 목록에는 교육담당은 포함되고 총괄담당은 빠진다", async () => {
+    const response = await request(app)
+      .get(`/api/enrollments/course/${courseId}`)
+      .set("Authorization", `Bearer ${adminToken}`);
+
+    expect(response.status).toBe(200);
+    const userIds = response.body.map((row) => row.user_id);
+    expect(userIds).toContain(educatorId);
+    expect(userIds).not.toContain(seniorManagerId);
+  });
+
+  it("교육과정 목록의 total_count(전체 대상 인원)에도 총괄담당은 포함되지 않는다", async () => {
+    const before = await request(app)
+      .get("/api/courses?year=2026")
+      .set("Authorization", `Bearer ${adminToken}`);
+    const totalCountBefore = before.body.find(
+      (c) => c.id === courseId,
+    ).total_count;
+
+    // 총괄담당을 한 명 더 만들어도 total_count는 그대로여야 한다.
+    await createUser(adminToken, { username: "headcount-senior-2", role: 5 });
+
+    const after = await request(app)
+      .get("/api/courses?year=2026")
+      .set("Authorization", `Bearer ${adminToken}`);
+    const totalCountAfter = after.body.find((c) => c.id === courseId).total_count;
+
+    expect(totalCountAfter).toBe(totalCountBefore);
+  });
+});

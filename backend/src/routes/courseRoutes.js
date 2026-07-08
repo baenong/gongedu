@@ -23,8 +23,8 @@ router.get("/", authenticateToken, (req, res) => {
     const { year } = req.query;
     const { role, departmentId, teamId, id: userId } = req.user;
 
-    let userCondition = `u.role < ${roles["교육담당"]}`;
-    let enrollmentCondition = `u.role < ${roles["교육담당"]}`;
+    let userCondition = `u.role < ${roles["총괄담당"]}`;
+    let enrollmentCondition = `u.role < ${roles["총괄담당"]}`;
 
     // 파라미터 배열
     let params = [];
@@ -67,14 +67,14 @@ router.get("/", authenticateToken, (req, res) => {
       SELECT c.*,
         d.name as department,
         CASE WHEN c.created_by = ?
-          THEN (SELECT COUNT(*) FROM users u WHERE u.role < ${roles["교육담당"]})
+          THEN (SELECT COUNT(*) FROM users u WHERE u.role < ${roles["총괄담당"]})
           ELSE NULL
         END as total_count,
         CASE WHEN c.created_by = ?
           THEN (SELECT COUNT(*) FROM enrollments e
                 JOIN users u ON e.user_id = u.id
                 WHERE e.course_id = c.id AND e.state = 2
-                  AND u.role < ${roles["교육담당"]})
+                  AND u.role < ${roles["총괄담당"]})
           ELSE NULL
         END as submitted_count
       FROM courses c
