@@ -211,30 +211,31 @@ function migrateDatabase() {
   }
 
   // enrollments(user_id, course_id) UNIQUE 보장.
-  // 과거 동시 제출 등으로 중복 행이 남아있으면 최신 행만 남기고 정리한 뒤 인덱스를 건다.
-  const duplicateGroups = db
+  // 인덱스가 없을 때(과거 버전 DB) 딱 한 번만 중복 행을 정리한 뒤 인덱스를 건다.
+  // 인덱스가 이미 있으면 유니크 제약상 중복이 생길 수 없으므로 매 부팅마다
+  // 전체 스캔하는 GROUP BY 정리 작업은 건너뛴다.
+  const indexExists = db
     .prepare(
-      `SELECT user_id, course_id FROM enrollments
-       GROUP BY user_id, course_id HAVING COUNT(*) > 1`,
+      "SELECT 1 FROM sqlite_master WHERE type = 'index' AND name = 'idx_enrollments_user_course'",
     )
-    .all();
-  if (duplicateGroups.length > 0) {
-    console.warn(
-      `⚠️ enrollments 중복 (user_id, course_id) ${duplicateGroups.length}건 발견 - 최신 행만 남기고 정리합니다.`,
-    );
-    const deleteOlderDuplicates = db.prepare(`
-      DELETE FROM enrollments
-      WHERE user_id = ? AND course_id = ? AND id NOT IN (
-        SELECT id FROM enrollments WHERE user_id = ? AND course_id = ? ORDER BY id DESC LIMIT 1
+    .get();
+  if (!indexExists) {
+    const dedupeResult = db
+      .prepare(
+        `DELETE FROM enrollments WHERE id NOT IN (
+           SELECT MAX(id) FROM enrollments GROUP BY user_id, course_id
+         )`,
       )
-    `);
-    for (const { user_id, course_id } of duplicateGroups) {
-      deleteOlderDuplicates.run(user_id, course_id, user_id, course_id);
+      .run();
+    if (dedupeResult.changes > 0) {
+      console.warn(
+        `⚠️ enrollments 중복 (user_id, course_id) ${dedupeResult.changes}건 정리했습니다.`,
+      );
     }
+    db.exec(
+      "CREATE UNIQUE INDEX idx_enrollments_user_course ON enrollments(user_id, course_id)",
+    );
   }
-  db.exec(
-    "CREATE UNIQUE INDEX IF NOT EXISTS idx_enrollments_user_course ON enrollments(user_id, course_id)",
-  );
 }
 
 export default db;

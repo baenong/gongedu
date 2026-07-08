@@ -16,7 +16,7 @@ import {
   sanitizeFilename,
   buildDisplayFileName,
 } from "../utils/enrollmentFileName.js";
-import { roles } from "../../constants.js";
+import { roles, MIME_TYPES } from "../../constants.js";
 import {
   verifyCertificate,
   isAiConfigured,
@@ -116,13 +116,6 @@ const MAGIC_BYTES = {
   ".jpg":  { bytes: [0xff, 0xd8, 0xff],       label: "JPEG" },
   ".jpeg": { bytes: [0xff, 0xd8, 0xff],       label: "JPEG" },
   ".png":  { bytes: [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a], label: "PNG" },
-};
-
-const MIME_TYPES = {
-  ".pdf": "application/pdf",
-  ".jpg": "image/jpeg",
-  ".jpeg": "image/jpeg",
-  ".png": "image/png",
 };
 
 // PDF에서 JavaScript 실행에 사용되는 딕셔너리 키 패턴
@@ -283,18 +276,16 @@ router.post(
           stored_file_name = excluded.stored_file_name,
           submitted_at = excluded.submitted_at
       `);
-      upsert.run(
+      const upsertResult = upsert.run(
         targetUserId,
         courseId,
         finalFileName,
         finalFileName,
         submittedAt,
       );
-      const enrollment = db
-        .prepare(
-          "SELECT id FROM enrollments WHERE user_id = ? AND course_id = ?",
-        )
-        .get(targetUserId, courseId);
+      // UPDATE 분기(기존 행 존재)면 id가 그대로이고, INSERT 분기면 방금 생성된
+      // lastInsertRowid가 새 id이므로 별도 SELECT로 다시 조회할 필요가 없다.
+      const enrollmentId = existing ? existing.id : upsertResult.lastInsertRowid;
 
       if (
         existing &&
@@ -325,7 +316,7 @@ router.post(
       // changes가 0이 되어 조용히 무시되므로, 결과는 로그로만 남긴다.
       db.prepare(
         "UPDATE enrollments SET ai_verification = ?, ai_flagged = ? WHERE id = ?",
-      ).run(aiVerification, aiFlagged, enrollment.id);
+      ).run(aiVerification, aiFlagged, enrollmentId);
 
       res.json({
         message: "수료증이 제출되었습니다.",

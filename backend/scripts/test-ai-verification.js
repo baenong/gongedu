@@ -17,16 +17,10 @@ import {
   verifyCertificate,
   isAiFlagged,
 } from "../src/services/ai/verifyCertificate.js";
+import { MIME_TYPES } from "../constants.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const testDataDir = path.join(__dirname, "../.test-data/ai-test");
-
-const MIME_TYPES = {
-  ".pdf": "application/pdf",
-  ".jpg": "image/jpeg",
-  ".jpeg": "image/jpeg",
-  ".png": "image/png",
-};
 
 // TODO: 실제 테스트 수료증 내용에 맞게 수정하세요.
 const TEST_CASES = [
@@ -76,7 +70,7 @@ async function runCase({
 
   if (!fs.existsSync(filePath)) {
     console.log(`⚠️  건너뜀 - 파일을 찾을 수 없습니다: ${filePath}`);
-    return { file, skipped: true };
+    return { file, status: "skip" };
   }
 
   const ext = path.extname(file).toLowerCase();
@@ -96,7 +90,7 @@ async function runCase({
     console.log(
       `❌ AI 검증이 null을 반환했습니다 (API 키 미설정 또는 호출 실패). ${elapsedMs}ms`,
     );
-    return { file, skipped: true };
+    return { file, status: "skip" };
   }
 
   const flagged = isAiFlagged(aiResult);
@@ -108,7 +102,7 @@ async function runCase({
     `${pass ? "✅ PASS" : "❌ FAIL"} - flagged=${flagged} (기대값: ${expectFlagged})`,
   );
 
-  return { file, pass, flagged, expectFlagged };
+  return { file, status: pass ? "pass" : "fail" };
 }
 
 async function main() {
@@ -117,23 +111,18 @@ async function main() {
     results.push(await runCase(testCase));
   }
 
+  const labels = { skip: "건너뜀", pass: "PASS", fail: "FAIL" };
   console.log(`\n${"=".repeat(60)}`);
   console.log("요약");
   for (const r of results) {
-    if (r.skipped) {
-      console.log(`- ${r.file}: 건너뜀`);
-    } else {
-      console.log(`- ${r.file}: ${r.pass ? "PASS" : "FAIL"}`);
-    }
+    console.log(`- ${r.file}: ${labels[r.status]}`);
   }
 
-  const skipped = results.filter((r) => r.skipped);
-  const failed = results.filter((r) => !r.skipped && !r.pass);
-  if (skipped.length === results.length) {
+  if (results.every((r) => r.status === "skip")) {
     console.log("\n⚠️  전부 건너뜀 - API 키 설정과 파일 경로를 확인하세요.");
     process.exitCode = 1;
-  } else if (failed.length > 0) {
-    console.log(`\n${failed.length}건 실패`);
+  } else if (results.some((r) => r.status === "fail")) {
+    console.log(`\n${results.filter((r) => r.status === "fail").length}건 실패`);
     process.exitCode = 1;
   } else {
     console.log("\n모두 통과");

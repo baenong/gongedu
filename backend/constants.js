@@ -6,3 +6,11 @@ export const roles = {
   팀계담당: 2,
   일반직원: 1,
 };
+
+// 업로드/AI 검증에서 공통으로 쓰는 확장자 -> MIME 타입 매핑.
+export const MIME_TYPES = {
+  ".pdf": "application/pdf",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".png": "image/png",
+};
