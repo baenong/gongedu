@@ -1,0 +1,86 @@
+import { beforeAll, describe, expect, it } from "vitest";
+import request from "supertest";
+import app from "../app.js";
+import { loginAsAdmin, createUser, loginAs } from "../test/helpers.js";
+
+describe("기능개선 의견 관리 화면 접근 권한 (총괄담당 이상)", () => {
+  let adminToken;
+  let seniorManagerToken;
+  let educatorToken;
+  let feedbackId;
+
+  beforeAll(async () => {
+    adminToken = await loginAsAdmin();
+    await createUser(adminToken, { username: "fb-senior-test", role: 5 });
+    await createUser(adminToken, { username: "fb-educator-test", role: 4 });
+    seniorManagerToken = await loginAs("fb-senior-test");
+    educatorToken = await loginAs("fb-educator-test");
+
+    const uniqueContent = `테스트 의견입니다 ${Date.now()}`;
+    await request(app)
+      .post("/api/feedback")
+      .set("Authorization", `Bearer ${educatorToken}`)
+      .send({ content: uniqueContent });
+
+    const list = await request(app)
+      .get("/api/feedback")
+      .set("Authorization", `Bearer ${seniorManagerToken}`);
+    feedbackId = list.body.find((f) => f.content === uniqueContent)?.id;
+  });
+
+  it("누구나 의견을 작성할 수 있다", async () => {
+    const response = await request(app)
+      .post("/api/feedback")
+      .set("Authorization", `Bearer ${educatorToken}`)
+      .send({ content: "또 다른 의견입니다." });
+
+    expect(response.status).toBe(201);
+  });
+
+  it("교육담당은 의견 목록(GET /)을 조회할 수 없다", async () => {
+    const response = await request(app)
+      .get("/api/feedback")
+      .set("Authorization", `Bearer ${educatorToken}`);
+
+    expect(response.status).toBe(403);
+  });
+
+  it("총괄담당은 의견 목록(GET /)을 조회할 수 있다", async () => {
+    const response = await request(app)
+      .get("/api/feedback")
+      .set("Authorization", `Bearer ${seniorManagerToken}`);
+
+    expect(response.status).toBe(200);
+    expect(Array.isArray(response.body)).toBe(true);
+  });
+
+  it("교육담당은 확인 여부를 토글할 수 없다", async () => {
+    const response = await request(app)
+      .patch(`/api/feedback/${feedbackId}/checked`)
+      .set("Authorization", `Bearer ${educatorToken}`)
+      .send({ checked: true });
+
+    expect(response.status).toBe(403);
+  });
+
+  it("총괄담당은 확인 여부를 토글할 수 있다", async () => {
+    const response = await request(app)
+      .patch(`/api/feedback/${feedbackId}/checked`)
+      .set("Authorization", `Bearer ${seniorManagerToken}`)
+      .send({ checked: true });
+
+    expect(response.status).toBe(200);
+  });
+
+  it("공개 목록(/public)은 작성자 이름/부서를 노출하지 않는다", async () => {
+    const response = await request(app)
+      .get("/api/feedback/public")
+      .set("Authorization", `Bearer ${educatorToken}`);
+
+    expect(response.status).toBe(200);
+    for (const feedback of response.body) {
+      expect(feedback).not.toHaveProperty("user_name");
+      expect(feedback).not.toHaveProperty("department");
+    }
+  });
+});

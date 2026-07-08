@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 // app.js를 import하면 initDatabase()가 실행되어 settings 테이블 등이 준비된다.
 // isAiConfigured()가 내부적으로 DB 설정(settings)을 조회하므로 이 초기화가 필요하다.
 import "../../app.js";
-import { isAiConfigured } from "./verifyCertificate.js";
+import { isAiConfigured, isAiFlagged } from "./verifyCertificate.js";
 
 describe("isAiConfigured", () => {
   const keys = ["AI_PROVIDER", "OPENAI_API_KEY", "ANTHROPIC_API_KEY"];
@@ -42,5 +42,42 @@ describe("isAiConfigured", () => {
     process.env.AI_PROVIDER = "unknown";
 
     expect(isAiConfigured()).toBe(false);
+  });
+});
+
+describe("isAiFlagged", () => {
+  // 판단 기준을 전부 통과한 "정상" 결과. 각 테스트에서 필드 하나씩만 false로 바꿔본다.
+  const validResult = {
+    isCertificate: true,
+    hasRequiredTitle: true,
+    extractedRecipientName: "홍길동",
+    nameMatches: true,
+    extractedCourseName: "인권교육",
+    courseMatches: true,
+    extractedIssuingInstitution: "행정안전부",
+    hasIssuingInstitution: true,
+    extractedIssueDate: "2026-05-01",
+    issueDateValid: true,
+    confidence: "high",
+    reasoning: "모든 기준을 충족합니다.",
+  };
+
+  it("AI 검증 결과가 null이면(검증 미수행) flagged로 취급하지 않는다", () => {
+    expect(isAiFlagged(null)).toBe(false);
+  });
+
+  it("모든 판단 기준을 통과하면 flagged가 아니다", () => {
+    expect(isAiFlagged(validResult)).toBe(false);
+  });
+
+  it.each([
+    "isCertificate",
+    "hasRequiredTitle",
+    "nameMatches",
+    "courseMatches",
+    "hasIssuingInstitution",
+    "issueDateValid",
+  ])("%s만 false여도 flagged가 된다", (field) => {
+    expect(isAiFlagged({ ...validResult, [field]: false })).toBe(true);
   });
 });
