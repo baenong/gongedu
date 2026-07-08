@@ -41,15 +41,16 @@ router.delete("/cleanup", authenticateToken, requireSeniorManager, (req, res) =>
 
     // 해당 연도의 모든 이수 내역(파일 정보 포함) 조회
     // course_id가 위의 courseIds 배열 안에 있는 경우만 조회
+    const coursePlaceholders = courseIds.map(() => "?").join(",");
     const enrollments = db
       .prepare(
         `
-      SELECT id, stored_file_name 
-      FROM enrollments 
-      WHERE course_id IN (${courseIds.join(",")})
+      SELECT id, stored_file_name
+      FROM enrollments
+      WHERE course_id IN (${coursePlaceholders})
     `
       )
-      .all();
+      .all(...courseIds);
 
     let deletedFileCount = 0;
 
@@ -72,11 +73,11 @@ router.delete("/cleanup", authenticateToken, requireSeniorManager, (req, res) =>
     if (mode === "files_only") {
       // [파일만 삭제] DB에서 파일 경로만 NULL로 변경 (기록은 유지)
       const updateStmt = db.prepare(`
-        UPDATE enrollments 
-        SET stored_file_name = NULL, file_name = NULL 
-        WHERE course_id IN (${courseIds.join(",")})
+        UPDATE enrollments
+        SET stored_file_name = NULL, file_name = NULL
+        WHERE course_id IN (${coursePlaceholders})
       `);
-      updateStmt.run();
+      updateStmt.run(...courseIds);
 
       res.json({
         message: `${year}년도 수료증 파일 ${deletedFileCount}개가 삭제되었습니다. (이수 기록은 유지됨)`,
