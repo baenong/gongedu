@@ -4,38 +4,19 @@ import axios from "axios";
 import { useAuthStore } from "../store/authStore";
 import { useRoleFlags } from "../hooks/useRoleFlags";
 import type { Course, Enrollment, Department, Team } from "../types";
-import { formatDateWithDay } from "../utils/dateUtils";
 import Select from "../components/Select";
-import TableHeader from "../components/TableHeader";
 import toast from "react-hot-toast";
-import Badge from "../components/Badge";
-import FormButton from "../components/FormButton";
 import CalendarView from "../components/CalendarView";
 import SimpleCourseList from "../components/SimpleCourseList";
 import CourseCard from "../components/CourseCard";
 import CourseCreateModal from "../components/CourseCreateModal";
+import CourseDetailModal, {
+  type UserStatus,
+} from "../components/CourseDetailModal";
 import { groupEventsByDate, type CalendarEvent } from "../utils/calendarUtils";
 import { getErrorMessage } from "../utils/errorUtils";
 import { downloadBlob } from "../utils/downloadFile";
 import { roles } from "../utils/constants";
-
-// 관리자용 이수현황 타입 정의
-interface UserStatus {
-  user_id: number;
-  name: string;
-  department: string;
-  departmentId: number;
-  team: string;
-  teamId: number;
-  enrollment_id: number | null;
-  state: number | null; // 2: 제출완료
-  submitted_at: string | null;
-  file_name: string | null;
-  stored_file_name: string | null;
-  ai_flagged: number | null;
-  ai_reasoning: string | null;
-  ai_verified: boolean | null;
-}
 
 const MainPage = () => {
   const { user } = useAuthStore();
@@ -764,374 +745,50 @@ const MainPage = () => {
         />
       )}
 
-      {/* 상세정보 및 이수현황 모달 */}
       {showDetailModal && selectedCourse && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-lg w-full max-w-6xl max-h-[90vh] shadow-xl flex flex-col">
-            {/* 모달 헤더 */}
-            <div className="pt-6 pb-3 px-6 border-b border-gray-200 dark:border-gray-700 flex justify-between items-start">
-              <div className="flex-1">
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-3 flex items-center">
-                  {selectedCourse.name}
-                  {isGeneralManager ? (
-                    <Select
-                      value={selectedCourse.department_id ?? 0}
-                      onChange={(e) =>
-                        setSelectedCourse({
-                          ...selectedCourse,
-                          department_id: Number(e.target.value),
-                        })
-                      }
-                      options={courseDepartmentOptions}
-                      className="ml-5 w-40 text-base font-normal"
-                    />
-                  ) : (
-                    <span className="ml-5 text-base font-normal text-gray-500 dark:text-gray-400">
-                      {selectedCourse.department}
-                    </span>
-                  )}
-                </h2>
-                <div className="flex">
-                  <span className="flex items-center text-base font-semibold text-gray-500 dark:text-gray-400 mr-2">
-                    마감일 :
-                  </span>
-                  {isSuperAdmin ? (
-                    <input
-                      type="date"
-                      value={selectedCourse.end_date}
-                      onChange={(e) =>
-                        setSelectedCourse({
-                          ...selectedCourse,
-                          end_date: e.target.value,
-                        })
-                      }
-                      className="border rounded px-2 py-1 text-base dark:bg-gray-700 dark:text-white border-gray-300 dark:border-gray-600"
-                    />
-                  ) : (
-                    <p className="text-base text-gray-500 dark:text-gray-400">
-                      {formatDateWithDay(selectedCourse.end_date)}
-                    </p>
-                  )}
-                </div>
-              </div>
-              <button
-                onClick={() => setShowDetailModal(false)}
-                className="text-gray-400 hover:text-gray-600 text-2xl"
-              >
-                &times;
-              </button>
-            </div>
-
-            {/* 모달 본문 */}
-            <div className="flex-1 flex flex-col min-h-0 overflow-hidden p-6">
-              {/* 상세정보 섹션 */}
-              <div className="shrink-0 bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg">
-                <h3 className="text-lg font-bold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600 pb-1 mb-2">
-                  📌 상세 정보
-                </h3>
-
-                {isSuperAdmin ? (
-                  <textarea
-                    rows={4}
-                    value={selectedCourse.detail || ""}
-                    onChange={(e) =>
-                      setSelectedCourse({
-                        ...selectedCourse,
-                        detail: e.target.value,
-                      })
-                    }
-                    className="w-full p-2 border rounded resize-none dark:bg-gray-700 dark:text-white border-gray-300 dark:border-gray-600"
-                    placeholder="상세 정보를 입력하세요."
-                  />
-                ) : (
-                  <p className="text-gray-700 dark:text-gray-200 whitespace-pre-wrap leading-relaxed">
-                    {selectedCourse.detail || "등록된 상세 정보가 없습니다."}
-                  </p>
-                )}
-              </div>
-
-              {/* 이수 현황 섹션 */}
-              <div className="flex flex-col flex-1 min-h-0 mt-6">
-                <div className="mb-4 gap-4">
-                  <h3 className="text-xl font-bold text-gray-900 dark:text-white">
-                    {isManager
-                      ? `👥 직원 이수 현황 (${
-                          isSuperAdmin
-                            ? "전체"
-                            : isDeptManager
-                              ? user?.department
-                              : user?.team
-                        })`
-                      : "👥 이수 현황"}
-                  </h3>
-                </div>
-                {isManager && selectedCourse && isOwnCourse(selectedCourse) && (
-                  <div>
-                    <div className="flex justify-end gap-2 mb-2">
-                      <div className="flex gap-2">
-                        {/* 부서 필터 */}
-                        {isSuperAdmin && (
-                          <Select
-                            value={filterDepartment}
-                            onChange={(e) =>
-                              handleFilterDeptChange(Number(e.target.value))
-                            }
-                            options={departmentOptions}
-                            className="w-40"
-                          />
-                        )}
-
-                        {/* 팀 필터 */}
-                        <Select
-                          value={filterTeam}
-                          onChange={(e) =>
-                            setFilterTeam(Number(e.target.value))
-                          }
-                          options={filterTeamOptions}
-                          className="w-40"
-                        />
-
-                        {/* 이수여부 필터 */}
-                        <Select
-                          value={filterState}
-                          onChange={(e) => setFilterState(e.target.value)}
-                          options={completeOptions}
-                          className="w-32"
-                        />
-
-                        {/* AI검증 필터 */}
-                        <Select
-                          value={filterAiStatus}
-                          onChange={(e) => setFilterAiStatus(e.target.value)}
-                          options={aiFilterOptions}
-                          className="w-36"
-                        />
-                      </div>
-                      {isManager && (
-                        <div className="flex gap-1.5">
-                          <button
-                            onClick={handleCsvDownload}
-                            className="text-base bg-green-50 text-green-700 px-3 py-1.5 rounded hover:bg-green-100"
-                          >
-                            📋 현황 CSV
-                          </button>
-                          <button
-                            onClick={() =>
-                              handleZipDownload(
-                                selectedCourse.id,
-                                selectedCourse.name,
-                              )
-                            }
-                            className="text-base bg-blue-50 text-blue-600 px-3 py-1.5 rounded hover:bg-blue-100"
-                          >
-                            📦{" "}
-                            {isSuperAdmin
-                              ? "전체"
-                              : isDeptManager
-                                ? user?.department
-                                : user?.team}{" "}
-                            수료증 ZIP
-                          </button>
-                        </div>
-                      )}
-                      {selectedCourse && canManageCourse(selectedCourse) && (
-                        <button
-                          onClick={() => handleDeleteCourse(selectedCourse.id)}
-                          className="text-base bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 px-3 py-1.5 rounded hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors"
-                        >
-                          삭제
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                )}
-                {/* 현황 테이블 */}
-                <div className="border border-gray-200 dark:border-gray-700 rounded-lg flex-1 overflow-y-auto scrollbar-hide min-h-0">
-                  <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                    <thead className="bg-gray-50 dark:bg-gray-700 sticky top-0 z-10">
-                      <tr>
-                        <TableHeader>이름</TableHeader>
-                        {isSuperAdmin && <TableHeader>부서</TableHeader>}
-                        <TableHeader>팀(계)</TableHeader>
-                        <TableHeader>상태</TableHeader>
-                        <TableHeader>제출일 / 파일</TableHeader>
-                        <TableHeader>AI 검증</TableHeader>
-                        <TableHeader>관리</TableHeader>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                      {filteredStatusList.length > 0 ? (
-                        filteredStatusList.map((status) => (
-                          <tr
-                            key={status.user_id}
-                            className="hover:bg-gray-50 dark:hover:bg-gray-700/50"
-                          >
-                            <td className="px-4 py-3 text-base text-center font-medium text-gray-900 dark:text-white">
-                              {status.name}
-                            </td>
-                            {isSuperAdmin && (
-                              <td className="px-4 py-3 text-base text-center text-gray-500 dark:text-gray-400">
-                                {status.department}
-                              </td>
-                            )}
-                            <td className="px-4 py-3 text-base text-center text-gray-500 dark:text-gray-400">
-                              {status.team}
-                            </td>
-                            <td className="px-4 py-3 text-center">
-                              <Badge isDone={status.state === 2} />
-                            </td>
-                            <td className="px-4 py-3 text-left text-base">
-                              {status.state === 2 && status.enrollment_id ? (
-                                status.file_name &&
-                                status.file_name.length > 0 ? (
-                                  <div className="flex flex-col text-left">
-                                    {status.submitted_at}
-                                    <button
-                                      onClick={() =>
-                                        handleUserFileDownload(
-                                          status.enrollment_id!,
-                                          status.file_name!,
-                                        )
-                                      }
-                                      className={`text-left text-indigo-600 hover:text-indigo-900 hover:underline
-                                                dark:text-indigo-400 dark:hover:text-indigo-500 cursor-pointer`}
-                                    >
-                                      📄 {status.file_name}
-                                    </button>
-                                  </div>
-                                ) : (
-                                  <div className="flex flex-col text-left">
-                                    {status.submitted_at}
-                                    <div className="text-gray-600 line-through">
-                                      📄 파일명이 없거나 파일이 삭제되었습니다.
-                                    </div>
-                                  </div>
-                                )
-                              ) : (
-                                <span className="text-gray-400">-</span>
-                              )}
-                            </td>
-                            <td className="px-4 py-3 text-center text-base">
-                              {status.state === 2 && status.enrollment_id ? (
-                                <div className="flex items-center justify-center gap-1">
-                                  {status.ai_flagged === 1 && (
-                                    <span
-                                      title={
-                                        status.ai_reasoning ??
-                                        "AI 검증에서 의심스러운 부분이 발견되었습니다."
-                                      }
-                                    >
-                                      ⚠️
-                                    </span>
-                                  )}
-                                  {status.ai_verified === false && (
-                                    <span title="AI 검증이 수행되지 않았습니다.">
-                                      ❓
-                                    </span>
-                                  )}
-                                  {status.ai_verified === true &&
-                                    status.ai_flagged === 0 && (
-                                      <span title="AI 검증 결과 이상이 발견되지 않았습니다.">
-                                        🟢
-                                      </span>
-                                    )}
-                                </div>
-                              ) : (
-                                <span className="text-gray-400">-</span>
-                              )}
-                            </td>
-                            <td className="px-4 py-3 text-center text-base">
-                              <div className="flex items-center justify-center gap-1.5">
-                                {status.state === 2 && status.enrollment_id ? (
-                                  <>
-                                    {status.ai_verified === false &&
-                                      (user?.role ?? 0) >=
-                                        roles["부서담당"] && (
-                                        <button
-                                          onClick={() =>
-                                            handleReverifyEnrollment(
-                                              status.enrollment_id!,
-                                              status.name,
-                                            )
-                                          }
-                                          className="shrink-0 text-sm bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 px-2 py-0.5 rounded transition"
-                                        >
-                                          🔄 재검증
-                                        </button>
-                                      )}
-                                    {status.user_id !== user?.id && (
-                                      <button
-                                        onClick={() =>
-                                          handleAdminDeleteEnrollment(
-                                            status.enrollment_id!,
-                                            status.name,
-                                          )
-                                        }
-                                        className="shrink-0 text-base bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 px-3 py-1 rounded transition"
-                                      >
-                                        ❌ 삭제
-                                      </button>
-                                    )}
-                                  </>
-                                ) : status.user_id !== user?.id ? (
-                                  <label className="inline-block cursor-pointer text-base text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300 bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 px-3 py-1 rounded transition">
-                                    📎 대신 등록
-                                    <input
-                                      type="file"
-                                      accept=".pdf,.jpg,.png"
-                                      className="hidden"
-                                      onChange={(e) =>
-                                        e.target.files?.[0] &&
-                                        handleProxyUpload(
-                                          status.user_id,
-                                          status.name,
-                                          e.target.files[0],
-                                        )
-                                      }
-                                    />
-                                  </label>
-                                ) : (
-                                  <span className="text-gray-400">-</span>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td
-                            colSpan={isSuperAdmin ? 7 : 6}
-                            className="text-center py-4 text-gray-500"
-                          >
-                            조건에 맞는 데이터가 없습니다.
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-
-            {/* 모달 하단 닫기 버튼 */}
-            <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2">
-              {selectedCourse && canManageCourse(selectedCourse) && (
-                <button
-                  onClick={handleUpdateCourse}
-                  className="px-3 py-1 text-base bg-indigo-600 text-white rounded hover:bg-indigo-700 transition"
-                >
-                  수정사항 저장
-                </button>
-              )}
-              <FormButton
-                onClick={() => setShowDetailModal(false)}
-                className="dark:hover:bg-gray-600"
-              >
-                닫기
-              </FormButton>
-            </div>
-          </div>
-        </div>
+        <CourseDetailModal
+          course={selectedCourse}
+          onCourseChange={setSelectedCourse}
+          onClose={() => setShowDetailModal(false)}
+          isManager={isManager}
+          isSuperAdmin={isSuperAdmin}
+          isGeneralManager={isGeneralManager}
+          canViewStatus={isOwnCourse(selectedCourse)}
+          canManageCourse={canManageCourse(selectedCourse)}
+          canReverify={(user?.role ?? 0) >= roles["부서담당"]}
+          currentUserId={user?.id}
+          orgLabel={
+            isSuperAdmin
+              ? "전체"
+              : isDeptManager
+                ? (user?.department ?? "")
+                : (user?.team ?? "")
+          }
+          filteredStatusList={filteredStatusList}
+          departmentOptions={departmentOptions}
+          filterTeamOptions={filterTeamOptions}
+          completeOptions={completeOptions}
+          aiFilterOptions={aiFilterOptions}
+          courseDepartmentOptions={courseDepartmentOptions}
+          filterDepartment={filterDepartment}
+          filterTeam={filterTeam}
+          filterState={filterState}
+          filterAiStatus={filterAiStatus}
+          onFilterDepartmentChange={handleFilterDeptChange}
+          onFilterTeamChange={setFilterTeam}
+          onFilterStateChange={setFilterState}
+          onFilterAiStatusChange={setFilterAiStatus}
+          onCsvDownload={handleCsvDownload}
+          onZipDownload={() =>
+            handleZipDownload(selectedCourse.id, selectedCourse.name)
+          }
+          onDeleteCourse={() => handleDeleteCourse(selectedCourse.id)}
+          onUpdateCourse={handleUpdateCourse}
+          onReverify={handleReverifyEnrollment}
+          onAdminDelete={handleAdminDeleteEnrollment}
+          onProxyUpload={handleProxyUpload}
+          onUserFileDownload={handleUserFileDownload}
+        />
       )}
     </div>
   );
