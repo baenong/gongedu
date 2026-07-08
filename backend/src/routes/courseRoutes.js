@@ -109,6 +109,16 @@ router.post("/", authenticateToken, requireAdmin, (req, res) => {
       ? req.user.departmentId
       : (req.body.department_id ?? 0);
 
+  // courses.department_id는 DB 레벨 FK가 없어 잘못된 값이 조용히 저장될 수 있으므로 직접 검증
+  if (department_id) {
+    const dept = db
+      .prepare("SELECT id FROM departments WHERE id = ?")
+      .get(department_id);
+    if (!dept) {
+      return res.status(400).json({ message: "존재하지 않는 부서입니다." });
+    }
+  }
+
   try {
     const stmt = db.prepare(`
       INSERT INTO courses (year, name, end_date, detail, created_by, department_id)
@@ -207,6 +217,16 @@ router.put("/:id", authenticateToken, requireAdmin, (req, res) => {
       req.user.role >= roles["총괄담당"]
         ? (req.body.department_id ?? course.department_id)
         : course.department_id;
+
+    // courses.department_id는 DB 레벨 FK가 없어 잘못된 값이 조용히 저장될 수 있으므로 직접 검증
+    if (department_id) {
+      const dept = db
+        .prepare("SELECT id FROM departments WHERE id = ?")
+        .get(department_id);
+      if (!dept) {
+        return res.status(400).json({ message: "존재하지 않는 부서입니다." });
+      }
+    }
 
     const stmt = db.prepare(
       "UPDATE courses SET end_date = ?, detail = ?, department_id = ? WHERE id = ?",

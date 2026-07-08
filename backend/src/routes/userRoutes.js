@@ -19,7 +19,10 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const uploadDir = path.join(__dirname, "../../uploads");
 
-const upload = multer({ storage: multer.memoryStorage() });
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 },
+});
 
 // 유효한 role 값 목록 (1~6)
 const VALID_ROLES = Object.values(roles);
@@ -97,6 +100,11 @@ router.post("/", (req, res) => {
   } catch (error) {
     if (error.code === "SQLITE_CONSTRAINT_UNIQUE") {
       return res.status(400).json({ message: "이미 존재하는 아이디입니다." });
+    }
+    if (error.code === "SQLITE_CONSTRAINT_FOREIGNKEY") {
+      return res
+        .status(400)
+        .json({ message: "존재하지 않는 부서 또는 팀입니다." });
     }
     console.error(error);
     res.status(500).json({ message: "서버 오류가 발생했습니다." });
@@ -246,6 +254,11 @@ router.put("/:id", (req, res) => {
 
     res.json({ message: "사용자 정보가 수정되었습니다." });
   } catch (error) {
+    if (error.code === "SQLITE_CONSTRAINT_FOREIGNKEY") {
+      return res
+        .status(400)
+        .json({ message: "존재하지 않는 부서 또는 팀입니다." });
+    }
     console.error(error);
     res.status(500).json({ message: "서버 오류가 발생했습니다." });
   }

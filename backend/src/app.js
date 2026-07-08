@@ -24,6 +24,13 @@ if (!fs.existsSync(logDir)) fs.mkdirSync(logDir, { recursive: true });
 
 dotenv.config();
 
+if (!process.env.JWT_SECRET) {
+  console.error(
+    "❌ JWT_SECRET 환경변수가 설정되지 않았습니다. .env 파일을 확인하세요.",
+  );
+  process.exit(1);
+}
+
 const app = express();
 app.set("trust proxy", 1); // Docker nginx 컨테이너를 첫 번째 프록시로 신뢰
 
@@ -95,7 +102,7 @@ app.use((err, req, res, next) => {
   if (err.name === "MulterError" && err.code === "LIMIT_FILE_SIZE") {
     return res
       .status(400)
-      .json({ message: "파일 크기는 1MB를 초과할 수 없습니다." });
+      .json({ message: "파일 크기가 허용된 용량을 초과했습니다." });
   }
   console.error(err);
   res.status(500).json({ message: "서버 오류가 발생했습니다." });

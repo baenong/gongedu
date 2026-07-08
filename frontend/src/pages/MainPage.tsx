@@ -162,25 +162,29 @@ const MainPage = () => {
   ];
 
   // 데이터 불러오기
-  const fetchData = async () => {
+  // signal이 주어지면(연도 변경에 따른 자동 재조회) 응답이 늦게 와도 최신 요청 결과만
+  // 반영되도록 취소 가능하게 한다. 버튼 클릭 등 수동 재조회는 signal 없이 그대로 호출.
+  const fetchData = async (signal?: AbortSignal) => {
     setIsLoading(true);
     try {
-      const courseRes = await api.get(`/courses?year=${year}`);
+      const courseRes = await api.get(`/courses?year=${year}`, { signal });
       setCourses(courseRes.data);
 
-      const enrollRes = await api.get("/enrollments/my");
+      const enrollRes = await api.get("/enrollments/my", { signal });
       setMyEnrollments(enrollRes.data);
 
       if (isSuperAdmin) {
-        const resDept = await api.get("/departments");
+        const resDept = await api.get("/departments", { signal });
         setDepartments(resDept.data);
-        const resTeam = await api.get("/departments/teams");
+        const resTeam = await api.get("/departments/teams", { signal });
         setAllTeams(resTeam.data);
       }
     } catch (error) {
+      if (axios.isCancel(error)) return;
       console.error("데이터 로딩 실패:", error);
+      toast.error(getErrorMessage(error, "데이터를 불러오지 못했습니다."));
     } finally {
-      setIsLoading(false);
+      if (!signal?.aborted) setIsLoading(false);
     }
   };
 
@@ -197,7 +201,10 @@ const MainPage = () => {
   };
 
   useEffect(() => {
-    fetchData();
+    const controller = new AbortController();
+    fetchData(controller.signal);
+    return () => controller.abort();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [year]);
 
   // --- 사용자 기능 ---
@@ -232,8 +239,7 @@ const MainPage = () => {
           warnIfAiKeyMissing(res.data.aiSkipReason);
           return "정상적으로 제출되었습니다!";
         },
-        error: (error) =>
-          error.response?.data?.message || "업로드를 실패했습니다.",
+        error: (error) => getErrorMessage(error, "업로드를 실패했습니다."),
       },
     );
   };
@@ -269,8 +275,7 @@ const MainPage = () => {
         fetchData();
         return "정상적으로 삭제되었습니다!";
       },
-      error: (error) =>
-        error.response?.data?.message || "삭제 중 오류가 발생했습니다.",
+      error: (error) => getErrorMessage(error, "삭제 중 오류가 발생했습니다."),
     });
   };
 
@@ -400,7 +405,7 @@ const MainPage = () => {
         warnIfAiKeyMissing(res.data.aiSkipReason);
         return "정상적으로 등록되었습니다!";
       },
-      error: (error) => error.response?.data?.message || "등록을 실패했습니다.",
+      error: (error) => getErrorMessage(error, "등록을 실패했습니다."),
     });
   };
 
@@ -427,8 +432,7 @@ const MainPage = () => {
     toast.promise(deletePromise, {
       loading: "제출내역 삭제 중...",
       success: "정상적으로 삭제되었습니다!",
-      error: (error) =>
-        error.response?.data?.message || "삭제 중 오류가 발생했습니다.",
+      error: (error) => getErrorMessage(error, "삭제 중 오류가 발생했습니다."),
     });
   };
 
@@ -457,8 +461,7 @@ const MainPage = () => {
         warnIfAiKeyMissing(res.data.aiSkipReason);
         return res.data.message;
       },
-      error: (error) =>
-        error.response?.data?.message || "재검증 중 오류가 발생했습니다.",
+      error: (error) => getErrorMessage(error, "재검증 중 오류가 발생했습니다."),
     });
   };
 

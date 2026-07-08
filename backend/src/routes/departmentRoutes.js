@@ -17,7 +17,10 @@ const router = express.Router();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const upload = multer({ storage: multer.memoryStorage() });
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 },
+});
 
 // 이미 존재하는 정렬번호인지 체크하는 함수
 const checkOrderIndex = (orderIndex, id = -1) => {

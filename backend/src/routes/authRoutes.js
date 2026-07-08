@@ -19,6 +19,15 @@ const loginLimiter = rateLimit({
   message: { message: "로그인 시도가 너무 많습니다. 15분 후 다시 시도해주세요." },
 });
 
+// 토큰이 탈취된 경우 currentPassword를 무제한으로 시도해볼 수 없도록 제한
+const passwordChangeLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15분
+  max: 10,                   // 최대 10회
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: "비밀번호 변경 시도가 너무 많습니다. 15분 후 다시 시도해주세요." },
+});
+
 // POST /api/auth/login
 router.post("/login", loginLimiter, (req, res) => {
   const { username, password } = req.body;
@@ -81,7 +90,7 @@ router.post("/login", loginLimiter, (req, res) => {
 });
 
 // PUT /api/auth/password
-router.put("/password", authenticateToken, (req, res) => {
+router.put("/password", authenticateToken, passwordChangeLimiter, (req, res) => {
   const { currentPassword, newPassword } = req.body;
   const userId = req.user.id;
 
