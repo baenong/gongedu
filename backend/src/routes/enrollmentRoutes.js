@@ -32,11 +32,44 @@ if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
 
-// AI 재검증이 진행 중인 enrollmentId를 추적한다.
-// - 동일 건에 대한 동시 재검증 요청(중복 AI 호출/결과 덮어쓰기)을 막고
-// - 재검증 진행 중 삭제되어 결과가 조용히 유실되는 것을 막는 데 사용한다.
+// AI 검증(제출 시 자동 실행 또는 관리자의 수동 재검증)이 진행 중인 enrollmentId를 추적한다.
+// - 동일 건에 대한 동시 AI 검증 요청(중복 유료 API 호출/결과 덮어쓰기)을 막고
+// - 검증 진행 중 삭제되어 결과가 조용히 유실되는 것을 막는 데 사용한다.
 // 단일 Node 프로세스 전제(멀티 프로세스로 확장 시에는 DB 기반 락으로 교체 필요).
-const reverifyingEnrollmentIds = new Set();
+const aiInFlightEnrollmentIds = new Set();
+
+// 수료증 제출 시 AI 검증은 응답을 막지 않도록 백그라운드에서 수행하고,
+// 끝나는 대로 결과만 별도로 반영한다. 검증에 실패하거나 오래 걸리더라도
+// 제출 자체는 이미 완료 처리된 상태이므로 사용자 경험에 영향이 없다.
+async function runBackgroundAiVerification({
+  enrollmentId,
+  filePath,
+  mimeType,
+  courseName,
+  submitterName,
+  courseYear,
+}) {
+  try {
+    const aiResult = await verifyCertificate({
+      fileBuffer: fs.readFileSync(filePath),
+      mimeType,
+      courseName,
+      submitterName,
+      courseYear,
+    });
+    const aiVerification = aiResult ? JSON.stringify(aiResult) : null;
+    const aiFlagged = isAiFlagged(aiResult) ? 1 : 0;
+
+    // 검증이 끝나기 전에 해당 건이 삭제되었다면 changes가 0이 되어 조용히 무시된다.
+    db.prepare(
+      "UPDATE enrollments SET ai_verification = ?, ai_flagged = ? WHERE id = ?",
+    ).run(aiVerification, aiFlagged, enrollmentId);
+  } catch (error) {
+    console.error(`백그라운드 AI 검증 실패 (enrollment ${enrollmentId}):`, error);
+  } finally {
+    aiInFlightEnrollmentIds.delete(enrollmentId);
+  }
+}
 
 // 수료증 접근 권한 확인
 // enrollment: { user_id, course_id }
@@ -302,25 +335,27 @@ router.post(
         }
       }
 
-      const aiResult = await verifyCertificate({
-        fileBuffer: fs.readFileSync(finalPath),
-        mimeType: MIME_TYPES[ext] || "application/octet-stream",
-        courseName: course.name,
-        submitterName: targetUser.name,
-        courseYear: course.year,
-      });
-      const aiVerification = aiResult ? JSON.stringify(aiResult) : null;
-      const aiFlagged = isAiFlagged(aiResult) ? 1 : 0;
-
-      // AI 검증 결과는 등록 확정 후 별도로 반영한다. 그 사이 해당 건이 삭제되었다면
-      // changes가 0이 되어 조용히 무시되므로, 결과는 로그로만 남긴다.
-      db.prepare(
-        "UPDATE enrollments SET ai_verification = ?, ai_flagged = ? WHERE id = ?",
-      ).run(aiVerification, aiFlagged, enrollmentId);
+      // AI 검증(수 초가 걸리는 외부 API 호출)은 응답을 기다리게 하지 않고 백그라운드로
+      // 돌린다. 오탐 가능성 때문에 AI 판단과 무관하게 제출 자체는 이미 확정된 상태이므로,
+      // 사용자는 검증이 끝나길 기다릴 필요 없이 즉시 제출 완료 화면을 볼 수 있다.
+      const aiConfigured = isAiConfigured();
+      if (aiConfigured) {
+        aiInFlightEnrollmentIds.add(enrollmentId);
+        runBackgroundAiVerification({
+          enrollmentId,
+          filePath: finalPath,
+          mimeType: MIME_TYPES[ext] || "application/octet-stream",
+          courseName: course.name,
+          submitterName: targetUser.name,
+          courseYear: course.year,
+        }).catch((error) => {
+          console.error(`백그라운드 AI 검증 처리 실패 (enrollment ${enrollmentId}):`, error);
+        });
+      }
 
       res.json({
         message: "수료증이 제출되었습니다.",
-        aiSkipReason: !aiResult && !isAiConfigured() ? "missing_api_key" : null,
+        aiSkipReason: aiConfigured ? null : "missing_api_key",
       });
     } catch (error) {
       // rename 전이면 tempPath, 후면 finalPath를 정리
@@ -792,10 +827,10 @@ router.delete("/:enrollmentId", authenticateToken, (req, res) => {
       return res.status(403).json({ message: "권한이 없습니다." });
     }
 
-    if (reverifyingEnrollmentIds.has(Number(enrollmentId))) {
+    if (aiInFlightEnrollmentIds.has(Number(enrollmentId))) {
       return res
         .status(409)
-        .json({ message: "AI 재검증이 진행 중입니다. 잠시 후 다시 시도하세요." });
+        .json({ message: "AI 검증이 진행 중입니다. 잠시 후 다시 시도하세요." });
     }
 
     const stmt = db.prepare("DELETE FROM enrollments WHERE id = ?");
@@ -824,13 +859,14 @@ router.post("/:enrollmentId/reverify", authenticateToken, async (req, res) => {
     return res.status(403).json({ message: "재검증 권한이 없습니다." });
   }
 
-  // 동일 건에 대한 동시 재검증(중복 유료 AI 호출, 결과 덮어쓰기)을 막는다.
-  if (reverifyingEnrollmentIds.has(numericEnrollmentId)) {
+  // 동일 건에 대한 동시 AI 검증(제출 시 자동 실행된 백그라운드 검증 포함, 중복 유료
+  // API 호출/결과 덮어쓰기)을 막는다.
+  if (aiInFlightEnrollmentIds.has(numericEnrollmentId)) {
     return res
       .status(409)
-      .json({ message: "이미 재검증이 진행 중입니다." });
+      .json({ message: "이미 AI 검증이 진행 중입니다." });
   }
-  reverifyingEnrollmentIds.add(numericEnrollmentId);
+  aiInFlightEnrollmentIds.add(numericEnrollmentId);
 
   try {
     const enrollment = db
@@ -900,7 +936,7 @@ router.post("/:enrollmentId/reverify", authenticateToken, async (req, res) => {
     console.error(error);
     res.status(500).json({ message: "재검증 중 오류가 발생했습니다." });
   } finally {
-    reverifyingEnrollmentIds.delete(numericEnrollmentId);
+    aiInFlightEnrollmentIds.delete(numericEnrollmentId);
   }
 });
 
