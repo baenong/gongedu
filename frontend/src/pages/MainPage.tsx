@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import api from "../api/axios";
 import axios from "axios";
 import { useAuthStore } from "../store/authStore";
+import { useRoleFlags } from "../hooks/useRoleFlags";
 import type { Course, Enrollment, Department, Team } from "../types";
 import { formatDateWithDay } from "../utils/dateUtils";
 import Select from "../components/Select";
@@ -37,10 +38,8 @@ interface UserStatus {
 
 const MainPage = () => {
   const { user } = useAuthStore();
-  const isManager = user?.role && user.role >= roles["팀계담당"];
-  const isDeptManager = user?.role && user.role === roles["부서담당"];
-  const isSuperAdmin = user?.role && user?.role >= roles["교육담당"];
-  const isGeneralManager = user?.role && user?.role >= roles["총괄담당"];
+  const { isManager, isDeptManager, isSuperAdmin, isGeneralManager } =
+    useRoleFlags(user);
 
   const thisYear = new Date().getFullYear();
 
@@ -853,8 +852,8 @@ const MainPage = () => {
                             {isSuperAdmin
                               ? ""
                               : isDeptManager
-                                ? user.department
-                                : user.team}{" "}
+                                ? user?.department
+                                : user?.team}{" "}
                             {isOwnCourse(course)
                               ? `제출현황: ${submitted} / ${total} 명`
                               : "타 부서 교육"}
@@ -1191,8 +1190,8 @@ const MainPage = () => {
                             {isSuperAdmin
                               ? "전체"
                               : isDeptManager
-                                ? user.department
-                                : user.team}{" "}
+                                ? user?.department
+                                : user?.team}{" "}
                             수료증 ZIP
                           </button>
                         </div>

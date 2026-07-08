@@ -4,6 +4,7 @@ import axios from "axios";
 import { getErrorMessage } from "../utils/errorUtils";
 import type { Department, Team, User } from "../types";
 import { useAuthStore } from "../store/authStore";
+import { useRoleFlags } from "../hooks/useRoleFlags";
 import { formatDateWithDay } from "../utils/dateUtils";
 import Select from "../components/Select";
 import TableHeader from "../components/TableHeader";
@@ -97,7 +98,7 @@ const AdminUserPage = () => {
     { label: "모든 부서", value: -1 },
   ]);
 
-  const canManageUsers = (currentUser?.role ?? 0) >= roles["총괄담당"];
+  const { isGeneralManager: canManageUsers } = useRoleFlags(currentUser);
 
   const filteredUsers = users.filter((user) => {
     const matchName =
