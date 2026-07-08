@@ -281,6 +281,26 @@ describe("SettingPage - AI 검증 설정 저장", () => {
 
     await waitFor(() => expect(apiKeyInput.value).toBe(""));
   });
+
+  it("저장이 실패해도 API 키 입력란이 비워진다", async () => {
+    apiPostMock.mockRejectedValueOnce({
+      isAxiosError: true,
+      response: { data: { message: "저장 실패" } },
+    });
+    await renderAs(5);
+
+    const section = screen
+      .getByText("AI 수료증 검증 설정")
+      .closest("section") as HTMLElement;
+
+    const apiKeyInput = section.querySelector(
+      'input[type="password"]',
+    ) as HTMLInputElement;
+    fireEvent.change(apiKeyInput, { target: { value: "sk-test-key" } });
+    fireEvent.click(within(section).getByText("저장"));
+
+    await waitFor(() => expect(apiKeyInput.value).toBe(""));
+  });
 });
 
 describe("SettingPage - 데이터 정리", () => {

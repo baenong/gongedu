@@ -16,6 +16,7 @@ import CalendarView from "../components/CalendarView";
 import SimpleCourseList from "../components/SimpleCourseList";
 import { groupEventsByDate, type CalendarEvent } from "../utils/calendarUtils";
 import { getErrorMessage } from "../utils/errorUtils";
+import { downloadBlob } from "../utils/downloadFile";
 import { roles } from "../utils/constants";
 
 // 관리자용 이수현황 타입 정의
@@ -249,17 +250,7 @@ const MainPage = () => {
         responseType: "blob",
       });
 
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement("a");
-      link.href = url;
-      link.setAttribute("download", fileName);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-
-      setTimeout(() => {
-        window.URL.revokeObjectURL(url);
-      }, 100);
+      downloadBlob(new Blob([response.data]), fileName);
     } catch (error) {
       console.log(error);
       toast.error("파일을 다운로드할 수 없습니다.");
@@ -488,17 +479,7 @@ const MainPage = () => {
         }
       }
 
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement("a");
-      link.href = url;
-      link.setAttribute("download", filename);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-
-      setTimeout(() => {
-        window.URL.revokeObjectURL(url);
-      }, 100);
+      downloadBlob(new Blob([response.data]), filename);
     } catch (error) {
       if (axios.isAxiosError(error))
         toast.error("다운로드할 파일이 없거나 오류가 발생했습니다.");
@@ -533,14 +514,7 @@ const MainPage = () => {
         .join("\n");
 
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.setAttribute("download", `${selectedCourse.name}_이수현황.csv`);
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 100);
+    downloadBlob(blob, `${selectedCourse.name}_이수현황.csv`);
   };
 
   // 교육과정 삭제

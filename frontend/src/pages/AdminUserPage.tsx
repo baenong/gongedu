@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import api from "../api/axios";
 import axios from "axios";
 import { getErrorMessage } from "../utils/errorUtils";
+import { downloadBlob } from "../utils/downloadFile";
 import type { Department, Team, User } from "../types";
 import { useAuthStore } from "../store/authStore";
 import { useRoleFlags } from "../hooks/useRoleFlags";
@@ -253,33 +254,20 @@ const AdminUserPage = () => {
         .join(","),
     );
     const csvContent = "﻿" + [header, ...rows].join("\n");
-
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.setAttribute("download", "직원목록.csv");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-
-    setTimeout(() => URL.revokeObjectURL(url), 100);
+    downloadBlob(
+      new Blob([csvContent], { type: "text/csv;charset=utf-8;" }),
+      "직원목록.csv",
+    );
   };
 
   const handleDownloadTemplate = () => {
     // 엑셀에서 한글 깨짐 방지를 위해 BOM(\uFEFF) 추가
     const csvContent =
       "\uFEFFid,name,department,team\nA0000000,홍길동,총무과,총무계\nB0000000,김철수,총무과,인사계";
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.setAttribute("download", "직원등록_양식.csv");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-
-    setTimeout(() => URL.revokeObjectURL(url), 100);
+    downloadBlob(
+      new Blob([csvContent], { type: "text/csv;charset=utf-8;" }),
+      "직원등록_양식.csv",
+    );
   };
 
   const handleExcelUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {

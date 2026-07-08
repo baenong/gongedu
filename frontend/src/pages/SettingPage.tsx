@@ -1,6 +1,7 @@
 import { useEffect, useEffectEvent, useRef, useState } from "react";
 import api from "../api/axios";
 import { getErrorMessage } from "../utils/errorUtils";
+import { downloadBlob } from "../utils/downloadFile";
 import toast from "react-hot-toast";
 import TextInput from "../components/TextInput";
 import FormLabel from "../components/FormLabel";
@@ -254,11 +255,16 @@ const SettingPage = () => {
         anthropicApiKey: aiSettings.anthropicApiKey,
       });
       toast.success("AI 설정이 저장되었습니다.");
-      setAiSettings((prev) => ({ ...prev, openaiApiKey: "", anthropicApiKey: "" }));
       const response = await api.get("/settings/ai");
       setAiSettings((prev) => ({ ...prev, ...response.data }));
     } catch (error) {
       toast.error(getErrorMessage(error, "AI 설정 저장을 실패했습니다."));
+    } finally {
+      setAiSettings((prev) => ({
+        ...prev,
+        openaiApiKey: "",
+        anthropicApiKey: "",
+      }));
     }
   };
 
@@ -502,15 +508,10 @@ const SettingPage = () => {
 
   const handleDownloadDeptTemplate = () => {
     const csvContent = "﻿name,orderIndex\n총무과,1\n기획과,2";
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.setAttribute("download", "부서등록_양식.csv");
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 100);
+    downloadBlob(
+      new Blob([csvContent], { type: "text/csv;charset=utf-8;" }),
+      "부서등록_양식.csv",
+    );
   };
 
   const handleDownloadTeamTemplate = () => {
@@ -523,15 +524,10 @@ const SettingPage = () => {
             .join("\n")
         : "총무계,1,총무과\n인사계,2,총무과";
     const csvContent = `${header}\n${deptHints}`;
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.setAttribute("download", "팀계등록_양식.csv");
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 100);
+    downloadBlob(
+      new Blob([csvContent], { type: "text/csv;charset=utf-8;" }),
+      "팀계등록_양식.csv",
+    );
   };
 
   return (
