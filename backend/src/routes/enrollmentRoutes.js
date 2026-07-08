@@ -20,6 +20,7 @@ import { roles } from "../../constants.js";
 import {
   verifyCertificate,
   isAiConfigured,
+  isAiFlagged,
 } from "../services/ai/verifyCertificate.js";
 
 const router = express.Router();
@@ -30,6 +31,12 @@ const uploadDir = path.join(__dirname, "../../uploads");
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
+
+// AI 재검증이 진행 중인 enrollmentId를 추적한다.
+// - 동일 건에 대한 동시 재검증 요청(중복 AI 호출/결과 덮어쓰기)을 막고
+// - 재검증 진행 중 삭제되어 결과가 조용히 유실되는 것을 막는 데 사용한다.
+// 단일 Node 프로세스 전제(멀티 프로세스로 확장 시에는 DB 기반 락으로 교체 필요).
+const reverifyingEnrollmentIds = new Set();
 
 // 수료증 접근 권한 확인
 // enrollment: { user_id, course_id }
@@ -235,7 +242,7 @@ router.post(
 
     try {
       const course = db
-        .prepare("SELECT name FROM courses WHERE id = ?")
+        .prepare("SELECT name, year FROM courses WHERE id = ?")
         .get(courseId);
       if (!course) throw new Error("교육과정을 찾을 수 없습니다.");
 
@@ -263,64 +270,62 @@ router.post(
       renamedToFinal = true;
       const submittedAt = getCurrentKST();
 
+      // 등록 확정(파일 저장)은 AI 검증(수 초가 걸리는 외부 API 호출)보다 먼저,
+      // await 없이 동기적으로 끝낸다. INSERT ... ON CONFLICT는 (user_id, course_id)
+      // UNIQUE 인덱스와 함께 원자적으로 처리되므로, 동시에 들어온 중복 제출 요청이
+      // AI 검증을 기다리는 사이에 끼어들어 중복 행을 만드는 것을 막아준다.
+      const upsert = db.prepare(`
+        INSERT INTO enrollments (user_id, course_id, state, file_name, stored_file_name, submitted_at)
+        VALUES (?, ?, 2, ?, ?, ?)
+        ON CONFLICT(user_id, course_id) DO UPDATE SET
+          state = 2,
+          file_name = excluded.file_name,
+          stored_file_name = excluded.stored_file_name,
+          submitted_at = excluded.submitted_at
+      `);
+      upsert.run(
+        targetUserId,
+        courseId,
+        finalFileName,
+        finalFileName,
+        submittedAt,
+      );
+      const enrollment = db
+        .prepare(
+          "SELECT id FROM enrollments WHERE user_id = ? AND course_id = ?",
+        )
+        .get(targetUserId, courseId);
+
+      if (
+        existing &&
+        existing.stored_file_name &&
+        existing.stored_file_name !== finalFileName
+      ) {
+        const oldFilePath = path.join(uploadDir, existing.stored_file_name);
+        if (fs.existsSync(oldFilePath)) {
+          try {
+            fs.unlinkSync(oldFilePath);
+          } catch (e) {
+            console.error(`기존 파일 삭제 실패: ${existing.stored_file_name}`, e);
+          }
+        }
+      }
+
       const aiResult = await verifyCertificate({
         fileBuffer: fs.readFileSync(finalPath),
         mimeType: MIME_TYPES[ext] || "application/octet-stream",
         courseName: course.name,
         submitterName: targetUser.name,
+        courseYear: course.year,
       });
       const aiVerification = aiResult ? JSON.stringify(aiResult) : null;
-      const aiFlagged =
-        aiResult &&
-        (!aiResult.isCertificate ||
-          !aiResult.nameMatches ||
-          !aiResult.courseMatches)
-          ? 1
-          : 0;
+      const aiFlagged = isAiFlagged(aiResult) ? 1 : 0;
 
-      if (existing) {
-        if (
-          existing.stored_file_name &&
-          existing.stored_file_name !== finalFileName
-        ) {
-          const oldFilePath = path.join(uploadDir, existing.stored_file_name);
-          if (fs.existsSync(oldFilePath)) {
-            try {
-              fs.unlinkSync(oldFilePath);
-            } catch (e) {
-              console.error(`기존 파일 삭제 실패: ${existing.stored_file_name}`, e);
-            }
-          }
-        }
-
-        const update = db.prepare(`
-        UPDATE enrollments
-        SET state = 2, file_name = ?, stored_file_name = ?, submitted_at = ?, ai_verification = ?, ai_flagged = ?
-        WHERE id = ?
-      `);
-        update.run(
-          finalFileName,
-          finalFileName,
-          submittedAt,
-          aiVerification,
-          aiFlagged,
-          existing.id,
-        );
-      } else {
-        const insert = db.prepare(`
-        INSERT INTO enrollments (user_id, course_id, state, file_name, stored_file_name, submitted_at, ai_verification, ai_flagged)
-        VALUES (?, ?, 2, ?, ?, ?, ?, ?)
-      `);
-        insert.run(
-          targetUserId,
-          courseId,
-          finalFileName,
-          finalFileName,
-          submittedAt,
-          aiVerification,
-          aiFlagged,
-        );
-      }
+      // AI 검증 결과는 등록 확정 후 별도로 반영한다. 그 사이 해당 건이 삭제되었다면
+      // changes가 0이 되어 조용히 무시되므로, 결과는 로그로만 남긴다.
+      db.prepare(
+        "UPDATE enrollments SET ai_verification = ?, ai_flagged = ? WHERE id = ?",
+      ).run(aiVerification, aiFlagged, enrollment.id);
 
       res.json({
         message: "수료증이 제출되었습니다.",
@@ -796,6 +801,12 @@ router.delete("/:enrollmentId", authenticateToken, (req, res) => {
       return res.status(403).json({ message: "권한이 없습니다." });
     }
 
+    if (reverifyingEnrollmentIds.has(Number(enrollmentId))) {
+      return res
+        .status(409)
+        .json({ message: "AI 재검증이 진행 중입니다. 잠시 후 다시 시도하세요." });
+    }
+
     const stmt = db.prepare("DELETE FROM enrollments WHERE id = ?");
     stmt.run(enrollmentId);
 
@@ -816,10 +827,19 @@ router.delete("/:enrollmentId", authenticateToken, (req, res) => {
 // POST /api/enrollments/:enrollmentId/reverify
 router.post("/:enrollmentId/reverify", authenticateToken, async (req, res) => {
   const { enrollmentId } = req.params;
+  const numericEnrollmentId = Number(enrollmentId);
 
   if (req.user.role < roles["부서담당"]) {
     return res.status(403).json({ message: "재검증 권한이 없습니다." });
   }
+
+  // 동일 건에 대한 동시 재검증(중복 유료 AI 호출, 결과 덮어쓰기)을 막는다.
+  if (reverifyingEnrollmentIds.has(numericEnrollmentId)) {
+    return res
+      .status(409)
+      .json({ message: "이미 재검증이 진행 중입니다." });
+  }
+  reverifyingEnrollmentIds.add(numericEnrollmentId);
 
   try {
     const enrollment = db
@@ -844,7 +864,7 @@ router.post("/:enrollmentId/reverify", authenticateToken, async (req, res) => {
     }
 
     const course = db
-      .prepare("SELECT name FROM courses WHERE id = ?")
+      .prepare("SELECT name, year FROM courses WHERE id = ?")
       .get(enrollment.course_id);
     const owner = db
       .prepare("SELECT name FROM users WHERE id = ?")
@@ -856,20 +876,25 @@ router.post("/:enrollmentId/reverify", authenticateToken, async (req, res) => {
       mimeType: MIME_TYPES[ext] || "application/octet-stream",
       courseName: course?.name ?? "",
       submitterName: owner?.name ?? "",
+      courseYear: course?.year ?? new Date().getFullYear(),
     });
 
     const aiVerification = aiResult ? JSON.stringify(aiResult) : null;
-    const aiFlagged =
-      aiResult &&
-      (!aiResult.isCertificate ||
-        !aiResult.nameMatches ||
-        !aiResult.courseMatches)
-        ? 1
-        : 0;
+    const aiFlagged = isAiFlagged(aiResult) ? 1 : 0;
 
-    db.prepare(
-      "UPDATE enrollments SET ai_verification = ?, ai_flagged = ? WHERE id = ?",
-    ).run(aiVerification, aiFlagged, enrollment.id);
+    // 재검증 도중 해당 건이 삭제되었다면 대상 행이 없어 changes가 0이 된다.
+    // 그 경우 이미 유료 AI 호출을 마쳤더라도 결과를 저장할 곳이 없으므로 정직하게 알린다.
+    const updateResult = db
+      .prepare(
+        "UPDATE enrollments SET ai_verification = ?, ai_flagged = ? WHERE id = ?",
+      )
+      .run(aiVerification, aiFlagged, enrollment.id);
+
+    if (updateResult.changes === 0) {
+      return res.status(404).json({
+        message: "재검증 중 해당 제출내역이 삭제되어 결과를 저장하지 못했습니다.",
+      });
+    }
 
     res.json({
       message: aiResult
@@ -883,6 +908,8 @@ router.post("/:enrollmentId/reverify", authenticateToken, async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "재검증 중 오류가 발생했습니다." });
+  } finally {
+    reverifyingEnrollmentIds.delete(numericEnrollmentId);
   }
 });
 

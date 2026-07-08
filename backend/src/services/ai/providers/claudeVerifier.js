@@ -1,35 +1,17 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { toImageBase64 } from "../pdfToImage.js";
 import { getSetting } from "../../../utils/settings.js";
-
-const RESPONSE_SCHEMA = {
-  type: "object",
-  properties: {
-    isCertificate: { type: "boolean" },
-    extractedRecipientName: { type: ["string", "null"] },
-    extractedCourseName: { type: ["string", "null"] },
-    nameMatches: { type: "boolean" },
-    courseMatches: { type: "boolean" },
-    confidence: { type: "string", enum: ["high", "medium", "low"] },
-    reasoning: { type: "string" },
-  },
-  required: [
-    "isCertificate",
-    "extractedRecipientName",
-    "extractedCourseName",
-    "nameMatches",
-    "courseMatches",
-    "confidence",
-    "reasoning",
-  ],
-  additionalProperties: false,
-};
+import {
+  CERTIFICATE_VERIFICATION_SCHEMA,
+  buildVerificationInstruction,
+} from "../certificateSchema.js";
 
 export async function verifyCertificateWithClaude({
   fileBuffer,
   mimeType,
   courseName,
   submitterName,
+  courseYear,
 }) {
   const apiKey =
     getSetting("ai_anthropic_api_key") || process.env.ANTHROPIC_API_KEY;
@@ -50,7 +32,7 @@ export async function verifyCertificateWithClaude({
       "claude-haiku-4-5",
     max_tokens: 1024,
     output_config: {
-      format: { type: "json_schema", schema: RESPONSE_SCHEMA },
+      format: { type: "json_schema", schema: CERTIFICATE_VERIFICATION_SCHEMA },
     },
     messages: [
       {
@@ -66,15 +48,23 @@ export async function verifyCertificateWithClaude({
           },
           {
             type: "text",
-            text:
-              `이 파일이 "${courseName}" 교육과정의 수료증/이수증이 맞고, ` +
-              `수료자 이름이 "${submitterName}"과 일치하는지 확인해주세요. ` +
-              "이미지에서 읽은 내용을 근거로만 판단하세요.",
+            text: buildVerificationInstruction({ courseName, submitterName, courseYear }),
           },
         ],
       },
     ],
   });
+
+  if (response.stop_reason === "max_tokens") {
+    console.error(
+      "Claude AI 검증 응답이 max_tokens에 도달해 잘렸습니다. reasoning이 예상보다 길었을 수 있습니다.",
+    );
+    return null;
+  }
+  if (response.stop_reason === "refusal") {
+    console.error("Claude가 AI 검증 요청을 거부했습니다(stop_reason: refusal).");
+    return null;
+  }
 
   const textBlock = response.content.find((block) => block.type === "text");
   if (!textBlock) return null;

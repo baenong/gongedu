@@ -209,6 +209,32 @@ function migrateDatabase() {
   if (!hasChecked) {
     db.exec("ALTER TABLE feedbacks ADD COLUMN checked INTEGER DEFAULT 0");
   }
+
+  // enrollments(user_id, course_id) UNIQUE 보장.
+  // 과거 동시 제출 등으로 중복 행이 남아있으면 최신 행만 남기고 정리한 뒤 인덱스를 건다.
+  const duplicateGroups = db
+    .prepare(
+      `SELECT user_id, course_id FROM enrollments
+       GROUP BY user_id, course_id HAVING COUNT(*) > 1`,
+    )
+    .all();
+  if (duplicateGroups.length > 0) {
+    console.warn(
+      `⚠️ enrollments 중복 (user_id, course_id) ${duplicateGroups.length}건 발견 - 최신 행만 남기고 정리합니다.`,
+    );
+    const deleteOlderDuplicates = db.prepare(`
+      DELETE FROM enrollments
+      WHERE user_id = ? AND course_id = ? AND id NOT IN (
+        SELECT id FROM enrollments WHERE user_id = ? AND course_id = ? ORDER BY id DESC LIMIT 1
+      )
+    `);
+    for (const { user_id, course_id } of duplicateGroups) {
+      deleteOlderDuplicates.run(user_id, course_id, user_id, course_id);
+    }
+  }
+  db.exec(
+    "CREATE UNIQUE INDEX IF NOT EXISTS idx_enrollments_user_course ON enrollments(user_id, course_id)",
+  );
 }
 
 export default db;

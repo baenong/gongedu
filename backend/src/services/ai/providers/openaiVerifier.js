@@ -1,32 +1,15 @@
 import OpenAI from "openai";
 import { toImageBase64 } from "../pdfToImage.js";
 import { getSetting } from "../../../utils/settings.js";
+import {
+  CERTIFICATE_VERIFICATION_SCHEMA,
+  buildVerificationInstruction,
+} from "../certificateSchema.js";
 
 const RESPONSE_SCHEMA = {
   name: "certificate_verification",
   strict: true,
-  schema: {
-    type: "object",
-    properties: {
-      isCertificate: { type: "boolean" },
-      extractedRecipientName: { type: ["string", "null"] },
-      extractedCourseName: { type: ["string", "null"] },
-      nameMatches: { type: "boolean" },
-      courseMatches: { type: "boolean" },
-      confidence: { type: "string", enum: ["high", "medium", "low"] },
-      reasoning: { type: "string" },
-    },
-    required: [
-      "isCertificate",
-      "extractedRecipientName",
-      "extractedCourseName",
-      "nameMatches",
-      "courseMatches",
-      "confidence",
-      "reasoning",
-    ],
-    additionalProperties: false,
-  },
+  schema: CERTIFICATE_VERIFICATION_SCHEMA,
 };
 
 export async function verifyCertificateWithOpenAI({
@@ -34,6 +17,7 @@ export async function verifyCertificateWithOpenAI({
   mimeType,
   courseName,
   submitterName,
+  courseYear,
 }) {
   const apiKey = getSetting("ai_openai_api_key") || process.env.OPENAI_API_KEY;
   if (!apiKey) {
@@ -48,22 +32,23 @@ export async function verifyCertificateWithOpenAI({
 
   const response = await client.chat.completions.create({
     model: getSetting("ai_openai_model") || process.env.OPENAI_MODEL || "gpt-4o",
+    // 조직 차원 Zero Data Retention 계약과 별개로, 이 호출이 distillation/평가용으로
+    // OpenAI 쪽에 30일간 저장되지 않도록 명시적으로 저장을 끈다.
+    store: false,
     response_format: { type: "json_schema", json_schema: RESPONSE_SCHEMA },
     messages: [
       {
         role: "system",
         content:
-          "당신은 제출된 파일이 교육 수료증/이수증이 맞는지, 특정 교육과 관련이 있는지, " +
-          "특정 사람의 명의가 맞는지 판단하는 검증 도우미입니다. 이미지에서 읽은 내용을 근거로만 판단하세요.",
+          "당신은 제출된 파일이 교육 수료증/이수증 형식에 맞는지, 특정 교육과 " +
+          "맥락상 관련이 있는지, 특정 사람의 명의가 맞는지 판단하는 검증 도우미입니다.",
       },
       {
         role: "user",
         content: [
           {
             type: "text",
-            text:
-              `이 파일이 "${courseName}" 교육과정의 수료증/이수증이 맞고, ` +
-              `수료자 이름이 "${submitterName}"과 일치하는지 확인해주세요.`,
+            text: buildVerificationInstruction({ courseName, submitterName, courseYear }),
           },
           {
             type: "image_url",

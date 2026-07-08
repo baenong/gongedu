@@ -28,6 +28,7 @@ export async function verifyCertificate({
   mimeType,
   courseName,
   submitterName,
+  courseYear,
 }) {
   const provider = getAiProvider();
 
@@ -38,6 +39,7 @@ export async function verifyCertificate({
         mimeType,
         courseName,
         submitterName,
+        courseYear,
       });
     }
 
@@ -47,6 +49,7 @@ export async function verifyCertificate({
         mimeType,
         courseName,
         submitterName,
+        courseYear,
       });
     }
 
@@ -56,4 +59,17 @@ export async function verifyCertificate({
     console.error("AI 수료증 검증 실패:", error);
     return null;
   }
+}
+
+// 판단 기준 중 하나라도 걸리면 담당자 확인이 필요하다고 표시한다.
+export function isAiFlagged(aiResult) {
+  if (!aiResult) return false;
+  return Boolean(
+    !aiResult.isCertificate ||
+      !aiResult.hasRequiredTitle ||
+      !aiResult.nameMatches ||
+      !aiResult.courseMatches ||
+      !aiResult.hasIssuingInstitution ||
+      !aiResult.issueDateValid,
+  );
 }
