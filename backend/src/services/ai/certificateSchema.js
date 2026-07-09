@@ -44,6 +44,8 @@ export function buildVerificationInstruction({ courseName, submitterName, course
 4. 교육을 발급한 기관명이 적혀 있는지 (hasIssuingInstitution)
 5. 발급일자가 적혀 있다면 그 연도가 ${courseYear}년인지 (issueDateValid). 발급일자가 아예 없다면 issueDateValid는 false로 판단하세요.
 
+reasoning 필드는 위 판단 근거를 요약한 것으로, 반드시 한국어로만 작성하세요.
+
 대상 교육과정명: "${courseName}"
 대상 수료자 이름: "${submitterName}"
 기준 연도: ${courseYear}`;
