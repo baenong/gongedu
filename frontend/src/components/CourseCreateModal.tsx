@@ -2,6 +2,8 @@ import FormButton from "./FormButton";
 import FormLabel from "./FormLabel";
 import Select from "./Select";
 import TextInput from "./TextInput";
+import { useAuthStore } from "../store/authStore";
+import { roles } from "../utils/constants";
 
 export interface NewCourseForm {
   name: string;
@@ -15,8 +17,6 @@ interface CourseCreateModalProps {
   onChange: (course: NewCourseForm) => void;
   onSubmit: (e: React.FormEvent) => void;
   onClose: () => void;
-  isEducator: boolean;
-  educatorDepartmentOption: { value: number; label: string };
   departmentOptions: { value: number; label: string }[];
 }
 
@@ -25,10 +25,15 @@ const CourseCreateModal = ({
   onChange,
   onSubmit,
   onClose,
-  isEducator,
-  educatorDepartmentOption,
   departmentOptions,
 }: CourseCreateModalProps) => {
+  const user = useAuthStore((state) => state.user);
+  const isEducator = user?.role === roles["교육담당"];
+  const educatorDepartmentOption = {
+    value: user?.departmentId ?? 0,
+    label: user?.department || "미지정",
+  };
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md shadow-xl">

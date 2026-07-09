@@ -665,11 +665,6 @@ const MainPage = () => {
           onChange={setNewCourse}
           onSubmit={handleCreateCourse}
           onClose={() => setShowCreateModal(false)}
-          isEducator={user?.role === roles["교육담당"]}
-          educatorDepartmentOption={{
-            value: user?.departmentId ?? 0,
-            label: user?.department || "미지정",
-          }}
           departmentOptions={courseDepartmentOptions}
         />
       )}
