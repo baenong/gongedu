@@ -181,6 +181,29 @@ router.post("/ai", authenticateToken, requireSeniorManager, (req, res) => {
 });
 
 // POST /api/settings/ai/models - 제공자의 사용 가능한 모델 목록 조회
+// provider별로 "API 키 결정 방식"과 "모델 목록 조회 방식"만 다르고 나머지 흐름은
+// 동일하므로, 두 provider가 각자 구현하지 않고 이 맵에서 공통 흐름을 처리한다.
+const AI_MODEL_PROVIDERS = {
+  openai: {
+    resolveKey: (apiKey) =>
+      apiKey || getSetting("ai_openai_api_key") || process.env.OPENAI_API_KEY,
+    listModelIds: async (key) => {
+      const list = await new OpenAI({ apiKey: key }).models.list();
+      return list.data.map((m) => m.id).sort();
+    },
+  },
+  claude: {
+    resolveKey: (apiKey) =>
+      apiKey ||
+      getSetting("ai_anthropic_api_key") ||
+      process.env.ANTHROPIC_API_KEY,
+    listModelIds: async (key) => {
+      const list = await new Anthropic({ apiKey: key }).models.list();
+      return list.data.map((m) => m.id).sort();
+    },
+  },
+};
+
 // apiKey를 body로 직접 받으면(아직 저장 전인 입력값) 그 키로 조회하고,
 // 없으면 저장된 값 또는 .env 값으로 폴백한다.
 router.post(
@@ -189,35 +212,18 @@ router.post(
   requireSeniorManager,
   async (req, res) => {
     const { provider, apiKey } = req.body;
+    const config = AI_MODEL_PROVIDERS[provider];
+    if (!config) {
+      return res.status(400).json({ message: "지원하지 않는 제공자입니다." });
+    }
 
     try {
-      if (provider === "openai") {
-        const key =
-          apiKey || getSetting("ai_openai_api_key") || process.env.OPENAI_API_KEY;
-        if (!key) {
-          return res.status(400).json({ message: "API 키를 먼저 입력하세요." });
-        }
-        const client = new OpenAI({ apiKey: key });
-        const list = await client.models.list();
-        const models = list.data.map((m) => m.id).sort();
-        return res.json({ models });
+      const key = config.resolveKey(apiKey);
+      if (!key) {
+        return res.status(400).json({ message: "API 키를 먼저 입력하세요." });
       }
-
-      if (provider === "claude") {
-        const key =
-          apiKey ||
-          getSetting("ai_anthropic_api_key") ||
-          process.env.ANTHROPIC_API_KEY;
-        if (!key) {
-          return res.status(400).json({ message: "API 키를 먼저 입력하세요." });
-        }
-        const client = new Anthropic({ apiKey: key });
-        const list = await client.models.list();
-        const models = list.data.map((m) => m.id).sort();
-        return res.json({ models });
-      }
-
-      return res.status(400).json({ message: "지원하지 않는 제공자입니다." });
+      const models = await config.listModelIds(key);
+      res.json({ models });
     } catch (error) {
       console.error("모델 목록 조회 실패:", error);
       res

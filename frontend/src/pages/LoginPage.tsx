@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import api from "../api/axios";
 import axios from "axios";
 import { useAuthStore } from "../store/authStore";
+import { getErrorMessage } from "../utils/errorUtils";
 import FormLabel from "../components/FormLabel";
 import TextInput from "../components/TextInput";
 
@@ -26,13 +27,15 @@ const LoginPage = () => {
       login(user, token);
       navigate("/");
     } catch (err) {
-      if (axios.isAxiosError(err)) {
-        if (err.response?.status === 401) {
-          setError("아이디 또는 비밀번호가 일치하지 않습니다.");
-        } else
-          setError(
+      if (axios.isAxiosError(err) && err.response?.status === 401) {
+        setError("아이디 또는 비밀번호가 일치하지 않습니다.");
+      } else {
+        setError(
+          getErrorMessage(
+            err,
             "서버 접속 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.",
-          );
+          ),
+        );
       }
       console.error(err);
     } finally {

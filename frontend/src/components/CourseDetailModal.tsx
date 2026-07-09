@@ -3,6 +3,7 @@ import FormButton from "./FormButton";
 import Select from "./Select";
 import TableHeader from "./TableHeader";
 import { formatDateWithDay } from "../utils/dateUtils";
+import { CERTIFICATE_FILE_ACCEPT } from "../utils/constants";
 import type { Course } from "../types";
 
 export interface UserStatus {
@@ -27,6 +28,23 @@ interface Option {
   label: string;
 }
 
+// 직원 이수 현황 표를 좁히는 필터 4종(부서/팀/이수여부/AI검증)의 값·옵션·변경 핸들러를
+// 하나로 묶어서 전달한다. 필터를 추가/제거할 때 이 타입 하나만 건드리면 된다.
+export interface CourseStatusFilters {
+  department: number;
+  team: number;
+  state: string;
+  aiStatus: string;
+  departmentOptions: Option[];
+  teamOptions: Option[];
+  stateOptions: Option[];
+  aiStatusOptions: Option[];
+  onDepartmentChange: (departmentId: number) => void;
+  onTeamChange: (teamId: number) => void;
+  onStateChange: (state: string) => void;
+  onAiStatusChange: (status: string) => void;
+}
+
 interface CourseDetailModalProps {
   course: Course;
   onCourseChange: (course: Course) => void;
@@ -40,19 +58,8 @@ interface CourseDetailModalProps {
   currentUserId: number | undefined;
   orgLabel: string;
   filteredStatusList: UserStatus[];
-  departmentOptions: Option[];
-  filterTeamOptions: Option[];
-  completeOptions: Option[];
-  aiFilterOptions: Option[];
+  filters: CourseStatusFilters;
   courseDepartmentOptions: Option[];
-  filterDepartment: number;
-  filterTeam: number;
-  filterState: string;
-  filterAiStatus: string;
-  onFilterDepartmentChange: (deptId: number) => void;
-  onFilterTeamChange: (teamId: number) => void;
-  onFilterStateChange: (state: string) => void;
-  onFilterAiStatusChange: (status: string) => void;
   onCsvDownload: () => void;
   onZipDownload: () => void;
   onDeleteCourse: () => void;
@@ -76,19 +83,8 @@ const CourseDetailModal = ({
   currentUserId,
   orgLabel,
   filteredStatusList,
-  departmentOptions,
-  filterTeamOptions,
-  completeOptions,
-  aiFilterOptions,
+  filters,
   courseDepartmentOptions,
-  filterDepartment,
-  filterTeam,
-  filterState,
-  filterAiStatus,
-  onFilterDepartmentChange,
-  onFilterTeamChange,
-  onFilterStateChange,
-  onFilterAiStatusChange,
   onCsvDownload,
   onZipDownload,
   onDeleteCourse,
@@ -98,6 +94,21 @@ const CourseDetailModal = ({
   onProxyUpload,
   onUserFileDownload,
 }: CourseDetailModalProps) => {
+  const {
+    department: filterDepartment,
+    team: filterTeam,
+    state: filterState,
+    aiStatus: filterAiStatus,
+    departmentOptions,
+    teamOptions: filterTeamOptions,
+    stateOptions: completeOptions,
+    aiStatusOptions: aiFilterOptions,
+    onDepartmentChange: onFilterDepartmentChange,
+    onTeamChange: onFilterTeamChange,
+    onStateChange: onFilterStateChange,
+    onAiStatusChange: onFilterAiStatusChange,
+  } = filters;
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white dark:bg-gray-800 rounded-lg w-full max-w-6xl max-h-[90vh] shadow-xl flex flex-col">
@@ -375,7 +386,7 @@ const CourseDetailModal = ({
                                 📎 대신 등록
                                 <input
                                   type="file"
-                                  accept=".pdf,.jpg,.png"
+                                  accept={CERTIFICATE_FILE_ACCEPT}
                                   className="hidden"
                                   onChange={(e) =>
                                     e.target.files?.[0] &&

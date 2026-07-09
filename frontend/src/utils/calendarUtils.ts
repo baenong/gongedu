@@ -14,20 +14,22 @@ const STATUS_ORDER: Record<CourseStatus, number> = {
   done: 2,
 };
 
+export function getDaysUntilEndDate(course: Course): number {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const endDate = new Date(course.end_date);
+  endDate.setHours(0, 0, 0, 0);
+
+  return Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 3600 * 24));
+}
+
 export function classifyCourseStatus(
   course: Course,
   isDone: boolean,
 ): CourseStatus {
   if (isDone) return "done";
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const endDate = new Date(course.end_date);
-  endDate.setHours(0, 0, 0, 0);
-
-  const diffDays = Math.ceil(
-    (endDate.getTime() - today.getTime()) / (1000 * 3600 * 24),
-  );
+  const diffDays = getDaysUntilEndDate(course);
 
   // 마감 7일 이내(당일 포함)면 임박, 그 외(마감 지난 것 포함)는 일반으로 분류한다.
   return diffDays >= 0 && diffDays <= 7 ? "urgent" : "normal";

@@ -22,3 +22,7 @@ export const getRoleLabel = (role: number) => {
   const meta = ROLE_META[role] ?? ROLE_META[roles["일반직원"]];
   return `${meta.icon} ${meta.label}`;
 };
+
+// 수료증 업로드 <input accept>에 쓰는 허용 확장자.
+// 백엔드 backend/constants.js의 ALLOWED_FILE_TYPES와 맞춰 유지한다.
+export const CERTIFICATE_FILE_ACCEPT = ".pdf,.jpg,.jpeg,.png";

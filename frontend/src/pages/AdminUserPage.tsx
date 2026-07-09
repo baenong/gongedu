@@ -15,9 +15,7 @@ import ActionButton from "../components/ActionButton";
 import { roles, ROLE_META, getRoleLabel } from "../utils/constants";
 import UserCreateModal from "../components/UserCreateModal";
 import UserEditModal from "../components/UserEditModal";
-import UserStatusModal, {
-  type UserEnrollmentStatus,
-} from "../components/UserStatusModal";
+import UserStatusModal from "../components/UserStatusModal";
 
 interface Options {
   label: string;
@@ -27,7 +25,6 @@ interface Options {
 const ROLE_ALL = "all";
 
 const AdminUserPage = () => {
-  const thisYear = new Date().getFullYear();
   const currentUser = useAuthStore((state) => state.user);
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -72,12 +69,8 @@ const AdminUserPage = () => {
 
   // 이수 현황 모달 상태
   const [showStatusModal, setShowStatusModal] = useState(false);
-  const [selectedUserStatus, setSelectedUserStatus] = useState<
-    UserEnrollmentStatus[]
-  >([]);
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [selectedUserName, setSelectedUserName] = useState("");
-  const [statusYear, setStatusYear] = useState(thisYear);
 
   // 필터링 관련
   const [filterName, setFilterName] = useState("");
@@ -162,13 +155,6 @@ const AdminUserPage = () => {
     value: Number(value),
     label: `${meta.icon} ${meta.label}`,
   }));
-
-  const yearOptions = [thisYear - 1, thisYear, thisYear + 1, thisYear + 2].map(
-    (y) => ({
-      value: y,
-      label: `${y}년`,
-    }),
-  );
 
   // 사용자 목록 불러오기
   const fetchUsers = async () => {
@@ -318,28 +304,11 @@ const AdminUserPage = () => {
     }
   };
 
-  const fetchUserStatus = async (userId: number, userName: string) => {
-    try {
-      setSelectedUserId(userId);
-      setSelectedUserName(userName);
-
-      const response = await api.get(
-        `/enrollments/status/user/${userId}?year=${statusYear}`,
-      );
-
-      setSelectedUserStatus(response.data);
-      setShowStatusModal(true);
-    } catch (error) {
-      if (axios.isAxiosError(error))
-        toast.error("이수 현황을 불러오지 못했습니다.");
-    }
+  const openStatusModal = (userId: number, userName: string) => {
+    setSelectedUserId(userId);
+    setSelectedUserName(userName);
+    setShowStatusModal(true);
   };
-
-  useEffect(() => {
-    if (showStatusModal && selectedUserId) {
-      fetchUserStatus(selectedUserId, selectedUserName);
-    }
-  }, [statusYear, showStatusModal, selectedUserId]);
 
   // 사용자 등록 핸들러
   const handleCreate = async (e: React.FormEvent) => {
@@ -568,7 +537,7 @@ const AdminUserPage = () => {
                 filteredUsers.map((user) => (
                   <tr
                     key={user.id}
-                    onClick={() => fetchUserStatus(user.id, user.name)}
+                    onClick={() => openStatusModal(user.id, user.name)}
                     className="hover:bg-indigo-50 dark:hover:bg-indigo-900/20 cursor-pointer"
                   >
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -661,13 +630,10 @@ const AdminUserPage = () => {
         />
       )}
 
-      {showStatusModal && (
+      {showStatusModal && selectedUserId !== null && (
         <UserStatusModal
+          userId={selectedUserId}
           userName={selectedUserName}
-          statusList={selectedUserStatus}
-          statusYear={statusYear}
-          onStatusYearChange={setStatusYear}
-          yearOptions={yearOptions}
           onClose={() => setShowStatusModal(false)}
         />
       )}

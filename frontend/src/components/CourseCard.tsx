@@ -1,6 +1,8 @@
 import Badge from "./Badge";
 import FormButton from "./FormButton";
 import { formatDateWithDay } from "../utils/dateUtils";
+import { getDaysUntilEndDate } from "../utils/calendarUtils";
+import { CERTIFICATE_FILE_ACCEPT } from "../utils/constants";
 import type { Course, Enrollment } from "../types";
 
 interface CourseCardProps {
@@ -39,12 +41,7 @@ const CourseCard = ({
   const submitted = course.submitted_count || 0;
   const isAllSubmitted = total > 0 && submitted >= total;
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const endDate = new Date(course.end_date);
-  endDate.setHours(0, 0, 0, 0);
-  const timeDiff = endDate.getTime() - today.getTime();
-  const diffDays = Math.ceil(timeDiff / (1000 * 3600 * 24));
+  const diffDays = getDaysUntilEndDate(course);
   const isUrgent = !isDone && diffDays >= 0 && diffDays <= 7;
   const isExpired = diffDays < 0;
 
@@ -161,7 +158,7 @@ const CourseCard = ({
                   수정
                   <input
                     type="file"
-                    accept=".pdf,.jpg,.png"
+                    accept={CERTIFICATE_FILE_ACCEPT}
                     className="hidden"
                     onChange={(e) =>
                       e.target.files?.[0] && onUpload(e.target.files[0])
@@ -184,7 +181,7 @@ const CourseCard = ({
                 📂 수료증 업로드 (최대 1MB)
                 <input
                   type="file"
-                  accept=".pdf,.jpg,.png"
+                  accept={CERTIFICATE_FILE_ACCEPT}
                   className="hidden"
                   onChange={(e) =>
                     e.target.files?.[0] && onUpload(e.target.files[0])

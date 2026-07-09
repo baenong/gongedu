@@ -1,3 +1,7 @@
+import { useEffect, useState } from "react";
+import axios from "axios";
+import toast from "react-hot-toast";
+import api from "../api/axios";
 import Badge from "./Badge";
 import FormButton from "./FormButton";
 import Select from "./Select";
@@ -15,22 +19,35 @@ export interface UserEnrollmentStatus {
 }
 
 interface UserStatusModalProps {
+  userId: number;
   userName: string;
-  statusList: UserEnrollmentStatus[];
-  statusYear: number;
-  onStatusYearChange: (year: number) => void;
-  yearOptions: { value: number; label: string }[];
   onClose: () => void;
 }
 
-const UserStatusModal = ({
-  userName,
-  statusList,
-  statusYear,
-  onStatusYearChange,
-  yearOptions,
-  onClose,
-}: UserStatusModalProps) => {
+const UserStatusModal = ({ userId, userName, onClose }: UserStatusModalProps) => {
+  const thisYear = new Date().getFullYear();
+  const [statusYear, setStatusYear] = useState(thisYear);
+  const [statusList, setStatusList] = useState<UserEnrollmentStatus[]>([]);
+
+  const yearOptions = [thisYear - 1, thisYear, thisYear + 1, thisYear + 2].map(
+    (y) => ({ value: y, label: `${y}년` }),
+  );
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const response = await api.get(
+          `/enrollments/status/user/${userId}?year=${statusYear}`,
+        );
+        setStatusList(response.data);
+      } catch (error) {
+        if (axios.isAxiosError(error)) {
+          toast.error("이수 현황을 불러오지 못했습니다.");
+        }
+      }
+    })();
+  }, [userId, statusYear]);
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white dark:bg-gray-800 rounded-lg w-full max-w-2xl max-h-[85vh] shadow-xl flex flex-col border border-gray-200 dark:border-gray-700">
@@ -48,7 +65,7 @@ const UserStatusModal = ({
           {/* 연도 선택 필터 */}
           <Select
             value={statusYear}
-            onChange={(e) => onStatusYearChange(Number(e.target.value))}
+            onChange={(e) => setStatusYear(Number(e.target.value))}
             options={yearOptions}
             className="w-28"
           />

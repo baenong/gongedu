@@ -3,6 +3,7 @@ import api from "../api/axios";
 import axios from "axios";
 import { useAuthStore } from "../store/authStore";
 import { useRoleFlags } from "../hooks/useRoleFlags";
+import { useCourseFilters } from "../hooks/useCourseFilters";
 import type { Course, Enrollment, Department, Team } from "../types";
 import Select from "../components/Select";
 import toast from "react-hot-toast";
@@ -76,52 +77,25 @@ const MainPage = () => {
   // 필터링
   const [departments, setDepartments] = useState<Department[]>([]);
   const [allTeams, setAllTeams] = useState<Team[]>([]);
-  const [filterTeamOptions, setFilterTeamOptions] = useState<
-    { value: number; label: string }[]
-  >([{ label: "모든 팀(계)", value: 0 }]);
 
-  const [filterDepartment, setFilterDepartment] = useState(0);
-  const [filterTeam, setFilterTeam] = useState(0);
-  const [filterState, setFilterState] = useState("all");
-  const [filterAiStatus, setFilterAiStatus] = useState("all");
-
-  const departmentOptions = [
-    { value: 0, label: "모든 부서" },
-    ...departments.map((d) => ({ value: d.id, label: d.name })),
-  ];
-
-  // 교육과정 등록 폼용 — "모든 부서"(필터 전용 옵션) 없이 실제 부서만 나열
-  const courseDepartmentOptions = departments.map((d) => ({
-    value: d.id,
-    label: d.name,
-  }));
-
-  const filteredStatusList = courseStatusList.filter((status) => {
-    const matchDepartment =
-      filterDepartment === 0 || status.departmentId === filterDepartment;
-
-    const matchTeam = filterTeam === 0 || status.teamId === filterTeam;
-
-    const matchState =
-      filterState === "all" ||
-      (filterState === "done" && status.state === 2) ||
-      (filterState === "yet" && status.state !== 2);
-
-    const matchAiStatus =
-      filterAiStatus === "all" ||
-      (filterAiStatus === "unverified" &&
-        status.state === 2 &&
-        status.ai_verified === false) ||
-      (filterAiStatus === "flagged" &&
-        status.state === 2 &&
-        status.ai_flagged === 1) ||
-      (filterAiStatus === "ok" &&
-        status.state === 2 &&
-        status.ai_verified === true &&
-        status.ai_flagged === 0);
-
-    return matchDepartment && matchTeam && matchState && matchAiStatus;
-  });
+  const {
+    filterDepartment,
+    filterTeam,
+    filterState,
+    filterAiStatus,
+    filterTeamOptions,
+    setFilterTeam,
+    setFilterState,
+    setFilterAiStatus,
+    setFilterTeamOptions,
+    departmentOptions,
+    courseDepartmentOptions,
+    completeOptions,
+    aiFilterOptions,
+    handleFilterDeptChange,
+    resetFilters,
+    filteredStatusList,
+  } = useCourseFilters(departments, allTeams, courseStatusList);
 
   const yearOptions = [thisYear - 1, thisYear, thisYear + 1, thisYear + 2].map(
     (y) => ({
@@ -129,19 +103,6 @@ const MainPage = () => {
       label: `${y}년`,
     }),
   );
-
-  const completeOptions = [
-    { value: "all", label: "전체" },
-    { value: "done", label: "🟢 이수완료" },
-    { value: "yet", label: "🟠 미이수" },
-  ];
-
-  const aiFilterOptions = [
-    { value: "all", label: "AI검증 전체" },
-    { value: "unverified", label: "❓ 미검증" },
-    { value: "flagged", label: "⚠️ 의심" },
-    { value: "ok", label: "🟢 정상" },
-  ];
 
   // 데이터 불러오기
   // signal이 주어지면(연도 변경에 따른 자동 재조회) 응답이 늦게 와도 최신 요청 결과만
@@ -168,18 +129,6 @@ const MainPage = () => {
     } finally {
       if (!signal?.aborted) setIsLoading(false);
     }
-  };
-
-  const handleFilterDeptChange = (deptId: number) => {
-    setFilterDepartment(deptId);
-    setFilterTeam(0);
-    const filtered = allTeams.filter((t) => t.departmentId === deptId);
-    setFilterTeamOptions([
-      { label: "모든 팀(계)", value: 0 },
-      ...(deptId === 0
-        ? []
-        : filtered.map((t) => ({ label: t.name, value: t.id }))),
-    ]);
   };
 
   useEffect(() => {
@@ -291,10 +240,7 @@ const MainPage = () => {
     setShowDetailModal(true);
 
     // 모달 열 때마다 초기화
-    setFilterDepartment(0);
-    setFilterTeam(0);
-    setFilterTeamOptions([{ label: "모든 팀(계)", value: 0 }]);
-    setFilterState("all");
+    resetFilters();
     setCourseStatusList([]);
 
     try {
@@ -760,19 +706,21 @@ const MainPage = () => {
                 : (user?.team ?? "")
           }
           filteredStatusList={filteredStatusList}
-          departmentOptions={departmentOptions}
-          filterTeamOptions={filterTeamOptions}
-          completeOptions={completeOptions}
-          aiFilterOptions={aiFilterOptions}
+          filters={{
+            department: filterDepartment,
+            team: filterTeam,
+            state: filterState,
+            aiStatus: filterAiStatus,
+            departmentOptions,
+            teamOptions: filterTeamOptions,
+            stateOptions: completeOptions,
+            aiStatusOptions: aiFilterOptions,
+            onDepartmentChange: handleFilterDeptChange,
+            onTeamChange: setFilterTeam,
+            onStateChange: setFilterState,
+            onAiStatusChange: setFilterAiStatus,
+          }}
           courseDepartmentOptions={courseDepartmentOptions}
-          filterDepartment={filterDepartment}
-          filterTeam={filterTeam}
-          filterState={filterState}
-          filterAiStatus={filterAiStatus}
-          onFilterDepartmentChange={handleFilterDeptChange}
-          onFilterTeamChange={setFilterTeam}
-          onFilterStateChange={setFilterState}
-          onFilterAiStatusChange={setFilterAiStatus}
           onCsvDownload={handleCsvDownload}
           onZipDownload={() =>
             handleZipDownload(selectedCourse.id, selectedCourse.name)

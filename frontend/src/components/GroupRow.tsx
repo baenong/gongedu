@@ -10,7 +10,7 @@ const GroupRow = ({ group, selected, onClick }: GroupRowProps) => {
   return (
     <div
       key={`${group.name}-${group.id}`}
-      className={`flex justify-between gap-1 rounded py-2 px-4 ${group.id == selected ? "bg-green-300 text-gray-700 font-medium" : ""}`}
+      className={`flex justify-between gap-1 rounded py-2 px-4 ${group.id === selected ? "bg-green-300 text-gray-700 font-medium" : ""}`}
       onClick={onClick}
     >
       <div>{group.name}</div>

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import HelpText from "./HelpText";
 import { useAuthStore } from "../store/authStore";
+import { roles } from "../utils/constants";
 
 interface HelpModalProps {
   onClose: () => void;
@@ -10,7 +11,7 @@ const HelpModal = ({ onClose }: HelpModalProps) => {
   const [activeTab, setActiveTab] = useState<"user" | "admin">("user");
 
   const user = useAuthStore((state) => state.user);
-  const isAdmin = user && user.role > 2;
+  const isAdmin = user && user.role > roles["팀계담당"];
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
