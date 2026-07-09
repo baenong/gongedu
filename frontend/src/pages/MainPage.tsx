@@ -22,8 +22,7 @@ import { roles } from "../utils/constants";
 
 const MainPage = () => {
   const { user } = useAuthStore();
-  const { isManager, isDeptManager, isSuperAdmin, isGeneralManager } =
-    useRoleFlags(user);
+  const { isManager, isDeptManager, isSuperAdmin } = useRoleFlags(user);
 
   const thisYear = new Date().getFullYear();
 
@@ -212,14 +211,6 @@ const MainPage = () => {
       // 교육담당 — 본인 소유만
       return course.created_by === user?.id;
     if (role >= roles["팀계담당"]) return true; // 부서담당, 팀계담당 — 담당 범위 조회는 항상 허용
-    return false;
-  };
-
-  // 이 교육과정을 수정/삭제할 수 있는지 (실제 소유자만 — 팀계/부서담당은 조회만 가능하고 관리는 불가)
-  const canManageCourse = (course: Course) => {
-    const role = user?.role ?? 0;
-    if (role >= roles["총괄담당"]) return true; // 총괄담당 이상 — 항상 허용
-    if (role === roles["교육담당"]) return course.created_by === user?.id;
     return false;
   };
 
@@ -676,11 +667,7 @@ const MainPage = () => {
           onClose={() => setShowDetailModal(false)}
           isManager={isManager}
           isSuperAdmin={isSuperAdmin}
-          isGeneralManager={isGeneralManager}
           canViewStatus={isOwnCourse(selectedCourse)}
-          canManageCourse={canManageCourse(selectedCourse)}
-          canReverify={(user?.role ?? 0) >= roles["부서담당"]}
-          currentUserId={user?.id}
           orgLabel={
             isSuperAdmin
               ? "전체"

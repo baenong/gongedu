@@ -3,7 +3,9 @@ import FormButton from "./FormButton";
 import Select from "./Select";
 import TableHeader from "./TableHeader";
 import { formatDateWithDay } from "../utils/dateUtils";
-import { CERTIFICATE_FILE_ACCEPT } from "../utils/constants";
+import { CERTIFICATE_FILE_ACCEPT, roles } from "../utils/constants";
+import { useAuthStore } from "../store/authStore";
+import { useRoleFlags } from "../hooks/useRoleFlags";
 import type { Course } from "../types";
 
 export interface UserStatus {
@@ -51,11 +53,7 @@ interface CourseDetailModalProps {
   onClose: () => void;
   isManager: boolean;
   isSuperAdmin: boolean;
-  isGeneralManager: boolean;
   canViewStatus: boolean;
-  canManageCourse: boolean;
-  canReverify: boolean;
-  currentUserId: number | undefined;
   orgLabel: string;
   filteredStatusList: UserStatus[];
   filters: CourseStatusFilters;
@@ -76,11 +74,7 @@ const CourseDetailModal = ({
   onClose,
   isManager,
   isSuperAdmin,
-  isGeneralManager,
   canViewStatus,
-  canManageCourse,
-  canReverify,
-  currentUserId,
   orgLabel,
   filteredStatusList,
   filters,
@@ -108,6 +102,18 @@ const CourseDetailModal = ({
     onStateChange: onFilterStateChange,
     onAiStatusChange: onFilterAiStatusChange,
   } = filters;
+
+  const currentUser = useAuthStore((state) => state.user);
+  const { isGeneralManager } = useRoleFlags(currentUser);
+  const currentUserId = currentUser?.id;
+  const canReverify = (currentUser?.role ?? 0) >= roles["부서담당"];
+
+  // 이 교육과정을 수정/삭제할 수 있는지 (실제 소유자만 — 팀계/부서담당은 조회만 가능하고 관리는 불가)
+  const currentRole = currentUser?.role ?? 0;
+  const canManageCourse =
+    currentRole >= roles["총괄담당"] ||
+    (currentRole === roles["교육담당"] &&
+      course.created_by === currentUser?.id);
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
