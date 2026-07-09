@@ -2,17 +2,17 @@ import Badge from "./Badge";
 import FormButton from "./FormButton";
 import { formatDateWithDay } from "../utils/dateUtils";
 import { getDaysUntilEndDate } from "../utils/calendarUtils";
+import { getOrgUnitLabel } from "../utils/roleLabels";
 import { CERTIFICATE_FILE_ACCEPT } from "../utils/constants";
+import { useAuthStore } from "../store/authStore";
+import { useRoleFlags } from "../hooks/useRoleFlags";
 import type { Course, Enrollment } from "../types";
 
 interface CourseCardProps {
   course: Course;
   enrollment: Enrollment | undefined;
-  isManager: boolean;
-  isSuperAdmin: boolean;
   isOwnCourse: boolean;
   isOwnActiveCourse: boolean;
-  managerLabel: string;
   isHighlighted: boolean;
   cardRef: (el: HTMLDivElement | null) => void;
   onClick: () => void;
@@ -24,11 +24,8 @@ interface CourseCardProps {
 const CourseCard = ({
   course,
   enrollment,
-  isManager,
-  isSuperAdmin,
   isOwnCourse,
   isOwnActiveCourse,
-  managerLabel,
   isHighlighted,
   cardRef,
   onClick,
@@ -36,6 +33,10 @@ const CourseCard = ({
   onDownload,
   onDelete,
 }: CourseCardProps) => {
+  const currentUser = useAuthStore((state) => state.user);
+  const { isManager, isSuperAdmin, isDeptManager } = useRoleFlags(currentUser);
+  const managerLabel = getOrgUnitLabel(currentUser, isDeptManager);
+
   const isDone = !!enrollment;
   const total = course.total_count || 0;
   const submitted = course.submitted_count || 0;

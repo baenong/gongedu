@@ -6,6 +6,7 @@ import { formatDateWithDay } from "../utils/dateUtils";
 import { CERTIFICATE_FILE_ACCEPT, roles } from "../utils/constants";
 import { useAuthStore } from "../store/authStore";
 import { useRoleFlags } from "../hooks/useRoleFlags";
+import { getOrgUnitLabel } from "../utils/roleLabels";
 import type { Course, SelectOption } from "../types";
 
 export interface UserStatus {
@@ -42,17 +43,8 @@ export interface CourseStatusFilters {
   onAiStatusChange: (status: string) => void;
 }
 
-interface CourseDetailModalProps {
-  course: Course;
-  onCourseChange: (course: Course) => void;
-  onClose: () => void;
-  isManager: boolean;
-  isSuperAdmin: boolean;
-  canViewStatus: boolean;
-  orgLabel: string;
-  filteredStatusList: UserStatus[];
-  filters: CourseStatusFilters;
-  courseDepartmentOptions: SelectOption[];
+// 상세 모달에서 발생하는 관리 액션(다운로드/삭제/수정/재검증/대리등록) 콜백을 한데 묶는다.
+export interface CourseDetailActions {
   onCsvDownload: () => void;
   onZipDownload: () => void;
   onDeleteCourse: () => void;
@@ -63,26 +55,37 @@ interface CourseDetailModalProps {
   onUserFileDownload: (enrollmentId: number, fileName: string) => void;
 }
 
+interface CourseDetailModalProps {
+  course: Course;
+  onCourseChange: (course: Course) => void;
+  onClose: () => void;
+  canViewStatus: boolean;
+  filteredStatusList: UserStatus[];
+  filters: CourseStatusFilters;
+  courseDepartmentOptions: SelectOption[];
+  actions: CourseDetailActions;
+}
+
 const CourseDetailModal = ({
   course,
   onCourseChange,
   onClose,
-  isManager,
-  isSuperAdmin,
   canViewStatus,
-  orgLabel,
   filteredStatusList,
   filters,
   courseDepartmentOptions,
-  onCsvDownload,
-  onZipDownload,
-  onDeleteCourse,
-  onUpdateCourse,
-  onReverify,
-  onAdminDelete,
-  onProxyUpload,
-  onUserFileDownload,
+  actions,
 }: CourseDetailModalProps) => {
+  const {
+    onCsvDownload,
+    onZipDownload,
+    onDeleteCourse,
+    onUpdateCourse,
+    onReverify,
+    onAdminDelete,
+    onProxyUpload,
+    onUserFileDownload,
+  } = actions;
   const {
     department: filterDepartment,
     team: filterTeam,
@@ -99,7 +102,11 @@ const CourseDetailModal = ({
   } = filters;
 
   const currentUser = useAuthStore((state) => state.user);
-  const { isGeneralManager } = useRoleFlags(currentUser);
+  const { isManager, isSuperAdmin, isDeptManager, isGeneralManager } =
+    useRoleFlags(currentUser);
+  const orgLabel = isSuperAdmin
+    ? "전체"
+    : getOrgUnitLabel(currentUser, isDeptManager);
   const currentUserId = currentUser?.id;
   const canReverify = (currentUser?.role ?? 0) >= roles["부서담당"];
 

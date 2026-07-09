@@ -618,20 +618,14 @@ const MainPage = () => {
               const ownCourse = isOwnCourse(course);
               const isOwnActiveCourse =
                 user?.role === roles["교육담당"] && ownCourse;
-              const managerLabel = isDeptManager
-                ? (user?.department ?? "")
-                : (user?.team ?? "");
 
               return (
                 <CourseCard
                   key={course.id}
                   course={course}
                   enrollment={enrollment}
-                  isManager={isManager}
-                  isSuperAdmin={isSuperAdmin}
                   isOwnCourse={ownCourse}
                   isOwnActiveCourse={isOwnActiveCourse}
-                  managerLabel={managerLabel}
                   isHighlighted={highlightedCourseIds.has(course.id)}
                   cardRef={(el) => {
                     courseRefs.current[course.id] = el;
@@ -665,29 +659,21 @@ const MainPage = () => {
           course={selectedCourse}
           onCourseChange={setSelectedCourse}
           onClose={() => setShowDetailModal(false)}
-          isManager={isManager}
-          isSuperAdmin={isSuperAdmin}
           canViewStatus={isOwnCourse(selectedCourse)}
-          orgLabel={
-            isSuperAdmin
-              ? "전체"
-              : isDeptManager
-                ? (user?.department ?? "")
-                : (user?.team ?? "")
-          }
           filteredStatusList={filteredStatusList}
           filters={filters}
           courseDepartmentOptions={courseDepartmentOptions}
-          onCsvDownload={handleCsvDownload}
-          onZipDownload={() =>
-            handleZipDownload(selectedCourse.id, selectedCourse.name)
-          }
-          onDeleteCourse={() => handleDeleteCourse(selectedCourse.id)}
-          onUpdateCourse={handleUpdateCourse}
-          onReverify={handleReverifyEnrollment}
-          onAdminDelete={handleAdminDeleteEnrollment}
-          onProxyUpload={handleProxyUpload}
-          onUserFileDownload={handleUserFileDownload}
+          actions={{
+            onCsvDownload: handleCsvDownload,
+            onZipDownload: () =>
+              handleZipDownload(selectedCourse.id, selectedCourse.name),
+            onDeleteCourse: () => handleDeleteCourse(selectedCourse.id),
+            onUpdateCourse: handleUpdateCourse,
+            onReverify: handleReverifyEnrollment,
+            onAdminDelete: handleAdminDeleteEnrollment,
+            onProxyUpload: handleProxyUpload,
+            onUserFileDownload: handleUserFileDownload,
+          }}
         />
       )}
     </div>
