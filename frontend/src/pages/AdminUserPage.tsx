@@ -32,10 +32,6 @@ const AdminUserPage = () => {
   // 조직 및 팀
   const [departments, setDepartments] = useState<Department[]>([]);
   const [allTeams, setAllTeams] = useState<Team[]>([]);
-  const [formTeams, setFormTeams] = useState<Team[]>([]);
-  const [formTeamOptions, setFormTeamOptions] = useState<Options[]>([
-    { label: "모든 팀(계)", value: -1 },
-  ]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const fileEditRef = useRef<HTMLInputElement>(null);
@@ -113,15 +109,6 @@ const AdminUserPage = () => {
         ? allTeams
         : allTeams.filter((team) => team.departmentId === deptId);
     setTeamOptions([
-      { label: "모든 팀(계)", value: -1 },
-      ...tempTeams.map((team) => ({ label: team.name, value: team.id })),
-    ]);
-  };
-
-  const handleFormTeams = (deptId: number) => {
-    const tempTeams = allTeams.filter((team) => team.departmentId === deptId);
-    setFormTeams(tempTeams);
-    setFormTeamOptions([
       { label: "모든 팀(계)", value: -1 },
       ...tempTeams.map((team) => ({ label: team.name, value: team.id })),
     ]);
@@ -352,7 +339,6 @@ const AdminUserPage = () => {
       role: user.role,
     });
     setShowEditModal(true);
-    handleFormTeams(user.departmentId);
   };
 
   // 정보 업데이트 핸들러
@@ -455,11 +441,7 @@ const AdminUserPage = () => {
             <div className="h-8 w-px bg-gray-300 dark:bg-gray-600 mx-1 hidden sm:block" />
 
             <ActionButton
-              onClick={() => {
-                setFormTeams([]);
-                setFormTeamOptions([]);
-                setShowCreateModal(true);
-              }}
+              onClick={() => setShowCreateModal(true)}
               className="bg-indigo-600 hover:bg-indigo-700"
             >
               🪪 사용자 등록
@@ -606,11 +588,9 @@ const AdminUserPage = () => {
           onChange={setCreateForm}
           onSubmit={handleCreate}
           onClose={() => setShowCreateModal(false)}
-          onDepartmentChange={handleFormTeams}
           departments={departments}
           departmentOptions={departmentOptions}
-          formTeams={formTeams}
-          formTeamOptions={formTeamOptions}
+          allTeams={allTeams}
           roleOptions={editRoleOptions}
         />
       )}
@@ -621,11 +601,9 @@ const AdminUserPage = () => {
           onChange={setEditForm}
           onSubmit={handleUpdate}
           onClose={() => setShowEditModal(false)}
-          onDepartmentChange={handleFormTeams}
           departments={departments}
           departmentOptions={departmentOptions}
-          formTeams={formTeams}
-          formTeamOptions={formTeamOptions}
+          allTeams={allTeams}
           roleOptions={editRoleOptions}
         />
       )}

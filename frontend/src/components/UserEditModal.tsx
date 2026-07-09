@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import FormButton from "./FormButton";
 import FormLabel from "./FormLabel";
 import Select from "./Select";
@@ -21,11 +22,9 @@ interface UserEditModalProps {
   onChange: (form: EditUserForm) => void;
   onSubmit: (e: React.FormEvent) => void;
   onClose: () => void;
-  onDepartmentChange: (departmentId: number) => void;
   departments: Department[];
   departmentOptions: { value: number; label: string }[];
-  formTeams: Team[];
-  formTeamOptions: { value: number; label: string }[];
+  allTeams: Team[];
   roleOptions: { value: number; label: string }[];
 }
 
@@ -34,13 +33,22 @@ const UserEditModal = ({
   onChange,
   onSubmit,
   onClose,
-  onDepartmentChange,
   departments,
   departmentOptions,
-  formTeams,
-  formTeamOptions,
+  allTeams,
   roleOptions,
 }: UserEditModalProps) => {
+  // 선택된 부서의 팀(계) 목록은 form.departmentId에서 항상 파생되므로,
+  // 부모가 별도 상태로 들고 있을 필요 없이 여기서 바로 계산한다.
+  const formTeams = useMemo(
+    () => allTeams.filter((t) => t.departmentId === form.departmentId),
+    [allTeams, form.departmentId],
+  );
+  const formTeamOptions = [
+    { label: "모든 팀(계)", value: -1 },
+    ...formTeams.map((t) => ({ label: t.name, value: t.id })),
+  ];
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md shadow-xl border border-gray-200 dark:border-gray-700">
@@ -72,7 +80,6 @@ const UserEditModal = ({
                   team: "",
                   teamId: 0,
                 });
-                onDepartmentChange(deptId);
               }}
               options={departmentOptions}
             />
