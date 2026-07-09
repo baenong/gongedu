@@ -16,7 +16,12 @@ import {
   sanitizeFilename,
   buildDisplayFileName,
 } from "../utils/enrollmentFileName.js";
-import { roles, MIME_TYPES } from "../../constants.js";
+import {
+  roles,
+  MIME_TYPES,
+  ALLOWED_FILE_TYPES,
+  ALLOWED_FILE_EXT_REGEX,
+} from "../../constants.js";
 import {
   verifyCertificate,
   isAiConfigured,
@@ -103,6 +108,26 @@ const canAccessEnrollment = (enrollment, requester) => {
   return false;
 };
 
+// 제출자 이름/부서/팀 조회 (파일명 조합용). 소속 이동 등으로 최신 정보가
+// 필요할 때마다 다시 조회해서 쓴다.
+const getSubmitterInfo = (userId) =>
+  db
+    .prepare("SELECT name, department, team FROM users WHERE id = ?")
+    .get(userId);
+
+// 제출자 정보 + 원본 저장 파일명으로 "보기 좋은" 다운로드용 파일명을 조합한다.
+// submitter가 없으면(탈퇴 등) undefined를 반환한다.
+const resolveDisplayFileName = (submitter, courseName, storedFileName) => {
+  if (!submitter) return undefined;
+  return buildDisplayFileName({
+    department: submitter.department,
+    team: submitter.team,
+    name: submitter.name,
+    courseName,
+    ext: path.extname(storedFileName),
+  });
+};
+
 // 대리 등록(다른 사용자 대신 수료증 제출) 권한 확인
 // 허용되면 null, 거부되면 에러 메시지를 반환한다.
 const checkProxyEnrollmentPermission = (requester, targetUserId, courseId) => {
@@ -144,25 +169,18 @@ const checkProxyEnrollmentPermission = (requester, targetUserId, courseId) => {
   return "대리 등록 권한이 없습니다.";
 };
 
-const MAGIC_BYTES = {
-  ".pdf": { bytes: [0x25, 0x50, 0x44, 0x46], label: "PDF" },
-  ".jpg":  { bytes: [0xff, 0xd8, 0xff],       label: "JPEG" },
-  ".jpeg": { bytes: [0xff, 0xd8, 0xff],       label: "JPEG" },
-  ".png":  { bytes: [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a], label: "PNG" },
-};
-
 // PDF에서 JavaScript 실행에 사용되는 딕셔너리 키 패턴
 const DANGEROUS_PDF_PATTERN = /\/JS[\s(<\r\n]|\/JavaScript|\/OpenAction|\/AA[\s(<\r\n]|\/Launch[\s(<\r\n]/;
 
 const validateUploadedFile = (filePath, ext) => {
-  const magic = MAGIC_BYTES[ext];
+  const magic = ALLOWED_FILE_TYPES[ext];
   if (!magic) return { valid: false, reason: "허용되지 않는 파일 형식입니다." };
 
   const buffer = fs.readFileSync(filePath);
 
   // 매직 바이트 확인
-  for (let i = 0; i < magic.bytes.length; i++) {
-    if (buffer[i] !== magic.bytes[i]) {
+  for (let i = 0; i < magic.magicBytes.length; i++) {
+    if (buffer[i] !== magic.magicBytes[i]) {
       return { valid: false, reason: `파일 내용이 ${magic.label} 형식과 일치하지 않습니다.` };
     }
   }
@@ -192,8 +210,7 @@ const upload = multer({
   storage: storage,
   limits: { fileSize: 1 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
-    const allowedTypes = /\.(pdf|jpg|jpeg|png)$/;
-    if (allowedTypes.test(path.extname(file.originalname).toLowerCase())) {
+    if (ALLOWED_FILE_EXT_REGEX.test(path.extname(file.originalname).toLowerCase())) {
       return cb(null, true);
     }
     cb(new Error("허용되지 않는 파일 형식입니다."));
@@ -401,9 +418,7 @@ router.get(
 
       const status = db.prepare(query).all(...params);
 
-      const owner = db
-        .prepare("SELECT name, department, team FROM users WHERE id = ?")
-        .get(userId);
+      const owner = getSubmitterInfo(userId);
 
       // 본인 조회는 항상 허용하고, 그 외에는 canAccessEnrollment와 동일한 기준으로
       // 과정 단위 스코프를 건다: 교육담당은 본인이 등록한 과정만, 부서담당/팀계담당은
@@ -418,16 +433,13 @@ router.get(
         )
         .map(({ stored_file_name, ...row }) => {
           if (row.state !== 2 || !stored_file_name || !owner) return row;
-          const ext = path.extname(stored_file_name);
           return {
             ...row,
-            file_name: buildDisplayFileName({
-              department: owner.department,
-              team: owner.team,
-              name: owner.name,
-              courseName: row.course_name,
-              ext,
-            }),
+            file_name: resolveDisplayFileName(
+              owner,
+              row.course_name,
+              stored_file_name,
+            ),
           };
         });
 
@@ -559,13 +571,11 @@ router.get("/course/:courseId/download-zip", authenticateToken, (req, res) => {
       if (fs.existsSync(filePath)) {
         // ZIP 안의 파일명은 다운로드 시점의 현재 소속 기준으로 매번 새로 만든다.
         const ext = path.extname(file.stored_file_name);
-        let displayName = buildDisplayFileName({
-          department: file.department,
-          team: file.team,
-          name: file.user_name,
-          courseName: course.name,
-          ext,
-        });
+        let displayName = resolveDisplayFileName(
+          { department: file.department, team: file.team, name: file.user_name },
+          course.name,
+          file.stored_file_name,
+        );
 
         // 같은 부서/팀 안에 동명이인이 있으면 파일명이 충돌할 수 있으므로 접미사를 붙인다.
         if (usedNames.has(displayName)) {
@@ -606,18 +616,13 @@ router.get("/my/:courseId", authenticateToken, (req, res) => {
       .get(courseId, userId);
 
     if (myEnrollment && myEnrollment.state === 2 && myEnrollment.stored_file_name) {
-      const owner = db
-        .prepare("SELECT name, department, team FROM users WHERE id = ?")
-        .get(userId);
+      const owner = getSubmitterInfo(userId);
       const course = db.prepare("SELECT name FROM courses WHERE id = ?").get(courseId);
-      const ext = path.extname(myEnrollment.stored_file_name);
-      myEnrollment.file_name = buildDisplayFileName({
-        department: owner.department,
-        team: owner.team,
-        name: owner.name,
-        courseName: course?.name ?? "",
-        ext,
-      });
+      myEnrollment.file_name = resolveDisplayFileName(
+        owner,
+        course?.name ?? "",
+        myEnrollment.stored_file_name,
+      );
     }
 
     if (myEnrollment) delete myEnrollment.stored_file_name;
@@ -645,22 +650,17 @@ router.get("/my", authenticateToken, (req, res) => {
       )
       .all(userId);
 
-    const owner = db
-      .prepare("SELECT name, department, team FROM users WHERE id = ?")
-      .get(userId);
+    const owner = getSubmitterInfo(userId);
 
     const enriched = myEnrollments.map(({ stored_file_name, ...row }) => {
       if (row.state !== 2 || !stored_file_name || !owner) return row;
-      const ext = path.extname(stored_file_name);
       return {
         ...row,
-        file_name: buildDisplayFileName({
-          department: owner.department,
-          team: owner.team,
-          name: owner.name,
-          courseName: row.course_name,
-          ext,
-        }),
+        file_name: resolveDisplayFileName(
+          owner,
+          row.course_name,
+          stored_file_name,
+        ),
       };
     });
 
@@ -734,18 +734,15 @@ router.get("/course/:courseId", authenticateToken, (req, res) => {
         return { ...row, ai_verified, ai_reasoning };
       }
 
-      const ext = path.extname(stored_file_name);
       return {
         ...row,
         ai_verified,
         ai_reasoning,
-        file_name: buildDisplayFileName({
-          department: row.department,
-          team: row.team,
-          name: row.name,
-          courseName: course?.name ?? "",
-          ext,
-        }),
+        file_name: resolveDisplayFileName(
+          row,
+          course?.name ?? "",
+          stored_file_name,
+        ),
       };
     });
 
@@ -794,15 +791,12 @@ router.get("/:id/download", authenticateToken, (req, res) => {
       .get(id);
 
     const ext = path.extname(enrollment.stored_file_name);
-    const displayFileName = owner
-      ? buildDisplayFileName({
-          department: owner.department,
-          team: owner.team,
-          name: owner.name,
-          courseName: owner.course_name,
-          ext,
-        })
-      : path.basename(enrollment.stored_file_name);
+    const displayFileName =
+      resolveDisplayFileName(
+        owner,
+        owner?.course_name,
+        enrollment.stored_file_name,
+      ) ?? path.basename(enrollment.stored_file_name);
 
     // Express의 res.download()/res.sendFile()은 내부적으로 send 모듈이 경로를
     // 재해석하는데, 특정 환경(예: 경로에 '+' 문자가 포함된 경우)에서 존재하는

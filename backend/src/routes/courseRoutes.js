@@ -45,42 +45,29 @@ router.get("/", authenticateToken, (req, res) => {
       params.push(teamId, teamId);
     }
 
+    // 1. 전체 대상 인원 / 2. 제출 완료 인원 계산식
+    let totalCountExpr = `(SELECT COUNT(*) FROM users u WHERE ${userCondition})`;
+    let submittedCountExpr = `(SELECT COUNT(*)
+         FROM enrollments e
+         JOIN users u ON e.user_id = u.id
+         WHERE e.course_id = c.id AND e.state = 2 AND ${enrollmentCondition}
+        )`;
+
+    // 교육담당(4)은 본인이 만든 과정에 한해서만 인원 수를 노출
+    if (role === roles["교육담당"]) {
+      totalCountExpr = `CASE WHEN c.created_by = ? THEN ${totalCountExpr} ELSE NULL END`;
+      submittedCountExpr = `CASE WHEN c.created_by = ? THEN ${submittedCountExpr} ELSE NULL END`;
+    }
+
     let query = `
       SELECT
         c.*,
         d.name as department,
-        -- 1. 전체 대상 인원
-        (SELECT COUNT(*) FROM users u WHERE ${userCondition}) as total_count,
-        -- 2. 제출 완료 인원
-        (SELECT COUNT(*)
-         FROM enrollments e
-         JOIN users u ON e.user_id = u.id
-         WHERE e.course_id = c.id AND e.state = 2 AND ${enrollmentCondition}
-        ) as submitted_count
+        ${totalCountExpr} as total_count,
+        ${submittedCountExpr} as submitted_count
       FROM courses c
       LEFT JOIN departments d ON d.id = c.department_id
     `;
-
-    // 교육담당(4) — 소유 여부에 따라 분기
-    if (role === roles["교육담당"]) {
-      query = `
-      SELECT c.*,
-        d.name as department,
-        CASE WHEN c.created_by = ?
-          THEN (SELECT COUNT(*) FROM users u WHERE u.role < ${roles["총괄담당"]})
-          ELSE NULL
-        END as total_count,
-        CASE WHEN c.created_by = ?
-          THEN (SELECT COUNT(*) FROM enrollments e
-                JOIN users u ON e.user_id = u.id
-                WHERE e.course_id = c.id AND e.state = 2
-                  AND u.role < ${roles["총괄담당"]})
-          ELSE NULL
-        END as submitted_count
-      FROM courses c
-      LEFT JOIN departments d ON d.id = c.department_id
-    `;
-    }
 
     // 연도가 지정되면 해당 연도만 조회, 없으면 전체 조회 (또는 현재 연도)
     if (year) {

@@ -7,7 +7,7 @@ export interface User {
   departmentId: number;
   team: string;
   teamId: number;
-  role: number; // 1:일반, 2:팀담당자, 3:총괄담당자, 4: 시스템최고권한
+  role: number; // 1:일반직원, 2:팀계담당, 3:부서담당, 4:교육담당, 5:총괄담당, 6:시스템관리자
 }
 
 // 교육과정 타입

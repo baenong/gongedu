@@ -6,10 +6,9 @@ import db from "../database.js";
 import requestIp from "request-ip";
 import ipRangeCheck from "ip-range-check";
 import { authenticateToken } from "../middlewares/authMiddleware.js";
-import { roles } from "../../constants.js";
+import { roles, LOCAL_RANGES } from "../../constants.js";
 
 const router = express.Router();
-const LOCAL_RANGES = ["127.0.0.1", "::1", "::ffff:127.0.0.1", "172.16.0.0/12"];
 
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15분

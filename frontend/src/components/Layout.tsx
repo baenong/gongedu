@@ -9,7 +9,7 @@ import toast, { Toaster } from "react-hot-toast";
 import HelpModal from "./HelpModal";
 import FeedbackModal from "./FeedbackModal";
 import { getErrorMessage } from "../utils/errorUtils";
-import { roles } from "../utils/constants";
+import { roles, ROLE_META } from "../utils/constants";
 import icoLogout from "../assets/icon/ico_logout.svg";
 
 const Layout = () => {
@@ -26,8 +26,6 @@ const Layout = () => {
 
   const [showHelp, setShowHelp] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
-
-  const roleIcons = ["👤", "🛡️", "⭐", "📚", "👑", "🔝"];
 
   useEffect(() => {
     if (isDarkMode) {
@@ -204,7 +202,7 @@ const Layout = () => {
                     </span>
                     님 ({user.team})
                   </button>
-                  <span title="권한">{roleIcons[user.role - 1]}</span>
+                  <span title="권한">{ROLE_META[user.role]?.icon}</span>
 
                   {/* 관리자 메뉴 링크 추가 */}
                   {user.role > roles["부서담당"] && (

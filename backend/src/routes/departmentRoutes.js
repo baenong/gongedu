@@ -1,9 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-import { Readable } from "stream";
 import multer from "multer";
-import ExcelJS from "exceljs";
 import express from "express";
 import db from "../database.js";
 import {
@@ -11,6 +9,7 @@ import {
   requireAdmin,
 } from "../middlewares/authMiddleware.js";
 import { roles } from "../../constants.js";
+import { loadUploadedWorksheet } from "../utils/excelUpload.js";
 
 const router = express.Router();
 
@@ -165,21 +164,7 @@ router.post(
     }
 
     try {
-      const workbook = new ExcelJS.Workbook();
-
-      const ext = path.extname(req.file.originalname).toLowerCase();
-
-      if (ext === ".csv") {
-        const stream = new Readable();
-        stream.push(req.file.buffer);
-        stream.push(null);
-
-        await workbook.csv.read(stream);
-      } else {
-        await workbook.xlsx.load(req.file.buffer);
-      }
-
-      const worksheet = workbook.worksheets[0];
+      const worksheet = await loadUploadedWorksheet(req.file);
       if (!worksheet)
         return res
           .status(400)
@@ -267,19 +252,7 @@ router.post(
     }
 
     try {
-      const workbook = new ExcelJS.Workbook();
-      const ext = path.extname(req.file.originalname).toLowerCase();
-
-      if (ext === ".csv") {
-        const stream = new Readable();
-        stream.push(req.file.buffer);
-        stream.push(null);
-        await workbook.csv.read(stream);
-      } else {
-        await workbook.xlsx.load(req.file.buffer);
-      }
-
-      const worksheet = workbook.worksheets[0];
+      const worksheet = await loadUploadedWorksheet(req.file);
       if (!worksheet)
         return res
           .status(400)

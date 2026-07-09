@@ -1,17 +1,16 @@
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-import { Readable } from "stream";
 import express from "express";
 import bcrypt from "bcryptjs";
 import multer from "multer";
-import ExcelJS from "exceljs";
 import db from "../database.js";
 import {
   authenticateToken,
   requireAdmin,
 } from "../middlewares/authMiddleware.js";
 import { roles } from "../../constants.js";
+import { loadUploadedWorksheet } from "../utils/excelUpload.js";
 
 const router = express.Router();
 
@@ -77,7 +76,7 @@ router.post("/", (req, res) => {
       return res.status(403).json({ message: "권한이 없습니다." });
     }
 
-    const hashedPassword = bcrypt.hashSync(password, 10);
+    const hashedPassword = bcrypt.hashSync(password || "1234", 10);
     const stmt = db.prepare(`
       INSERT INTO users (username, password, name, department, department_id, team, team_id, role)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -271,21 +270,7 @@ router.post("/upload-excel", upload.single("file"), async (req, res) => {
   }
 
   try {
-    const workbook = new ExcelJS.Workbook();
-
-    const ext = path.extname(req.file.originalname).toLowerCase();
-
-    if (ext === ".csv") {
-      const stream = new Readable();
-      stream.push(req.file.buffer);
-      stream.push(null);
-
-      await workbook.csv.read(stream);
-    } else {
-      await workbook.xlsx.load(req.file.buffer);
-    }
-
-    const worksheet = workbook.worksheets[0];
+    const worksheet = await loadUploadedWorksheet(req.file);
     if (!worksheet)
       return res.status(400).json({ message: "엑셀 시트를 찾을 수 없습니다." });
 
@@ -378,19 +363,7 @@ router.post("/upload-edit-excel", upload.single("file"), async (req, res) => {
   }
 
   try {
-    const workbook = new ExcelJS.Workbook();
-    const ext = path.extname(req.file.originalname).toLowerCase();
-
-    if (ext === ".csv") {
-      const stream = new Readable();
-      stream.push(req.file.buffer);
-      stream.push(null);
-      await workbook.csv.read(stream);
-    } else {
-      await workbook.xlsx.load(req.file.buffer);
-    }
-
-    const worksheet = workbook.worksheets[0];
+    const worksheet = await loadUploadedWorksheet(req.file);
     if (!worksheet)
       return res.status(400).json({ message: "엑셀 시트를 찾을 수 없습니다." });
 

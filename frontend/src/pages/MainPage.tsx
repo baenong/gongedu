@@ -16,6 +16,7 @@ import CourseDetailModal, {
 import { groupEventsByDate, type CalendarEvent } from "../utils/calendarUtils";
 import { getErrorMessage } from "../utils/errorUtils";
 import { downloadBlob } from "../utils/downloadFile";
+import { buildCsvBlob } from "../utils/csv";
 import { roles } from "../utils/constants";
 
 const MainPage = () => {
@@ -486,16 +487,10 @@ const MainPage = () => {
       ];
     });
 
-    const csvContent =
-      "﻿" +
-      [headers, ...rows]
-        .map((row) =>
-          row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","),
-        )
-        .join("\n");
-
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    downloadBlob(blob, `${selectedCourse.name}_이수현황.csv`);
+    downloadBlob(
+      buildCsvBlob(headers, rows),
+      `${selectedCourse.name}_이수현황.csv`,
+    );
   };
 
   // 교육과정 삭제

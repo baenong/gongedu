@@ -5,13 +5,15 @@ import { downloadBlob } from "../utils/downloadFile";
 import toast from "react-hot-toast";
 import TextInput from "../components/TextInput";
 import FormLabel from "../components/FormLabel";
-import FormButton from "../components/FormButton";
 import ActionButton from "../components/ActionButton";
 import type { Department, Team } from "../types";
 import GroupRow from "../components/GroupRow";
 import ScrollFade from "../components/ScrollFade";
 import { useAuthStore } from "../store/authStore";
 import { roles } from "../utils/constants";
+import IpAccessSettings from "../components/IpAccessSettings";
+import AiVerificationSettings from "../components/AiVerificationSettings";
+import DataCleanupSettings from "../components/DataCleanupSettings";
 
 const frameStyle = "h-62 p-1 overflow-y-auto scrollbar-hide";
 const btnFrameStyle = "flex flex-wrap justify-between";
@@ -19,39 +21,6 @@ const btnFrameStyle = "flex flex-wrap justify-between";
 const SettingPage = () => {
   const { user } = useAuthStore();
   const canManageAiSettings = (user?.role ?? 0) >= roles["총괄담당"];
-
-  const [settings, setSettings] = useState({ ipWhitelist: "" });
-
-  // AI 검증 설정 (총괄담당 이상 전용)
-  const [aiSettings, setAiSettings] = useState({
-    provider: "openai" as "openai" | "claude" | "local",
-    openaiModel: "",
-    anthropicModel: "",
-    localModel: "",
-    openaiApiKey: "",
-    anthropicApiKey: "",
-    hasOpenaiKey: false,
-    hasAnthropicKey: false,
-  });
-  const [aiModelOptions, setAiModelOptions] = useState<string[]>([]);
-  const [loadingAiModels, setLoadingAiModels] = useState(false);
-
-  // provider별로 흩어진 model/apiKey 값을 단일 UI 입력칸에 매핑하기 위한 헬퍼
-  const aiModelFieldByProvider = {
-    openai: "openaiModel",
-    claude: "anthropicModel",
-    local: "localModel",
-  } as const;
-  const currentAiModelField = aiModelFieldByProvider[aiSettings.provider];
-  const currentAiModel = aiSettings[currentAiModelField];
-  const currentAiApiKey =
-    aiSettings.provider === "claude"
-      ? aiSettings.anthropicApiKey
-      : aiSettings.openaiApiKey;
-  const currentAiHasKey =
-    aiSettings.provider === "claude"
-      ? aiSettings.hasAnthropicKey
-      : aiSettings.hasOpenaiKey;
 
   const deptFileRef = useRef<HTMLInputElement>(null);
   const teamFileRef = useRef<HTMLInputElement>(null);
@@ -66,21 +35,6 @@ const SettingPage = () => {
   const [teamName, setTeamName] = useState("");
   const [teamIdx, setTeamIdx] = useState(0);
   const [selectedTeam, setSelectedTeam] = useState(0);
-
-  // 데이터 정리 관련 상태
-  const [cleanupYear, setCleanupYear] = useState(new Date().getFullYear() - 1); // 기본값: 작년
-  const [cleanupMode, setCleanupMode] = useState<"files_only" | "all">(
-    "files_only",
-  );
-
-  const handleSave = async (key: string, value: string) => {
-    try {
-      await api.post("/settings", { key, value });
-      toast.success("설정이 저장되었습니다.");
-    } catch (error) {
-      toast.error(getErrorMessage(error, "설정 저장을 실패했습니다."));
-    }
-  };
 
   // 부서 관련 핸들러
   const getDepartments = async () => {
@@ -244,71 +198,7 @@ const SettingPage = () => {
     }
   };
 
-  // AI 검증 설정 저장 (API 키 입력란을 비워두면 기존 값을 유지)
-  const handleSaveAiSettings = async () => {
-    try {
-      await api.post("/settings/ai", {
-        provider: aiSettings.provider,
-        openaiModel: aiSettings.openaiModel,
-        anthropicModel: aiSettings.anthropicModel,
-        openaiApiKey: aiSettings.openaiApiKey,
-        anthropicApiKey: aiSettings.anthropicApiKey,
-      });
-      toast.success("AI 설정이 저장되었습니다.");
-      const response = await api.get("/settings/ai");
-      setAiSettings((prev) => ({ ...prev, ...response.data }));
-    } catch (error) {
-      toast.error(getErrorMessage(error, "AI 설정 저장을 실패했습니다."));
-    } finally {
-      setAiSettings((prev) => ({
-        ...prev,
-        openaiApiKey: "",
-        anthropicApiKey: "",
-      }));
-    }
-  };
-
-  // 현재 입력된(또는 저장된) 키로 provider의 사용 가능한 모델 목록을 조회
-  const handleRefreshAiModels = async () => {
-    if (aiSettings.provider === "local") return;
-    setLoadingAiModels(true);
-    try {
-      const response = await api.post("/settings/ai/models", {
-        provider: aiSettings.provider,
-        apiKey: currentAiApiKey || undefined,
-      });
-      setAiModelOptions(response.data.models);
-      toast.success(`모델 ${response.data.models.length}개를 불러왔습니다.`);
-    } catch (error) {
-      toast.error(getErrorMessage(error, "모델 목록을 가져오지 못했습니다."));
-    } finally {
-      setLoadingAiModels(false);
-    }
-  };
-
   useEffect(() => {
-    (async () => {
-      try {
-        const response = await api.get("/settings");
-        // DB에 없는 키가 있을 수 있으므로 기본값 병합
-        setSettings((prev) => ({ ...prev, ...response.data }));
-      } catch (error) {
-        toast.error(
-          getErrorMessage(error, "설정 로드에 실패했습니다. 서버를 확인하세요"),
-        );
-      }
-    })();
-
-    if (canManageAiSettings) {
-      (async () => {
-        try {
-          const response = await api.get("/settings/ai");
-          setAiSettings((prev) => ({ ...prev, ...response.data }));
-        } catch (error) {
-          toast.error(getErrorMessage(error, "AI 설정을 불러올 수 없습니다."));
-        }
-      })();
-    }
     getDepartments();
     getAllTeams();
   }, []);
@@ -316,25 +206,6 @@ const SettingPage = () => {
   useEffect(() => {
     getTeamsById(selectedDept);
   }, [selectedDept]);
-
-  // 데이터 정리 핸들러
-  const handleCleanup = async () => {
-    const msg =
-      cleanupMode === "files_only"
-        ? `${cleanupYear}년도의 "수료증 파일"만 삭제하시겠습니까?\n이수 기록은 유지되며 용량이 확보됩니다.`
-        : `⚠️ 경고: ${cleanupYear}년도의 모든 데이터(교육과정, 이수기록, 파일)가 영구 삭제됩니다.\n정말 진행하시겠습니까?`;
-
-    if (!window.confirm(msg)) return;
-
-    try {
-      const response = await api.delete("/settings/cleanup", {
-        data: { year: cleanupYear, mode: cleanupMode },
-      });
-      toast.success(response.data.message);
-    } catch (error) {
-      toast.error(getErrorMessage(error, "정리 작업 실패"));
-    }
-  };
 
   const deleteDepartment = async () => {
     if (selectedDept === 0) return;
@@ -737,275 +608,11 @@ const SettingPage = () => {
         </div>
       </section>
 
-      <section className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 border border-gray-200 dark:border-gray-700 transition-colors">
-        <h2 className="text-xl font-semibold text-gray-800 dark:text-white mb-4">
-          IP 설정
-        </h2>
-        <div className="space-y-6">
-          {/* <div className="flex flex-col sm:flex-row gap-4 items-end sm:items-center">
-            <div className="flex-1 w-full">
-              <FormLabel>부서명 (Department Name)</FormLabel>
-              <p className="text-base text-gray-500 dark:text-gray-400 mb-2">
-                수료증 파일명 생성 시 접두어로 사용됩니다. (예: [행정지원과]...)
-              </p>
-              <TextInput
-                value={settings.department_name}
-                onChange={(e) =>
-                  setSettings({ ...settings, department_name: e.target.value })
-                }
-              />
-            </div>
+      <IpAccessSettings />
 
-            <button
-              onClick={() =>
-                handleSave("department_name", settings.department_name)
-              }
-              className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-10 rounded-md text-base font-medium transition"
-            >
-              저장
-            </button>
-          </div> */}
+      {canManageAiSettings && <AiVerificationSettings />}
 
-          <hr className="border-gray-300 dark:border-gray-700" />
-
-          {/* IP 설정 */}
-          <div className="flex flex-col sm:flex-row gap-4 items-end sm:items-center">
-            <div className="flex-1 w-full">
-              <FormLabel>허용 IP 범위 (CIDR 형식)</FormLabel>
-
-              <p className="text-base text-gray-500 dark:text-gray-400 mb-2">
-                접속을 허용할 IP 또는 대역(CIDR)을 입력하세요. 쉼표(,)로
-                구분하여 여러 개 입력 가능합니다.
-                <br />
-                (예: <code>192.168.0.0/24, 10.50.10.5</code>) <br />
-                <span className="text-red-500 dark:text-red-400">
-                  * 비어있으면 모든 IP 접속 허용
-                </span>
-              </p>
-              <TextInput
-                value={settings.ipWhitelist}
-                onChange={(e) =>
-                  setSettings({ ...settings, ipWhitelist: e.target.value })
-                }
-                placeholder="예: 192.168.0.0/24"
-              />
-            </div>
-            <FormButton
-              onClick={() =>
-                handleSave("allowed_ip_range", settings.ipWhitelist)
-              }
-              className="px-4 py-16 dark:hover:bg-gray-600"
-            >
-              저장
-            </FormButton>
-          </div>
-        </div>
-      </section>
-
-      {canManageAiSettings && (
-        <section className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 border border-gray-200 dark:border-gray-700 transition-colors">
-          <h2 className="text-xl font-semibold text-gray-800 dark:text-white mb-4">
-            AI 수료증 검증 설정
-          </h2>
-          <p className="text-base text-gray-500 dark:text-gray-400 mb-6">
-            여기서 설정한 값이 있으면 우선 사용되고, 비어있으면 서버의 .env
-            설정을 그대로 사용합니다. API 키는 저장 후 다시 표시되지 않으며,
-            입력란을 비운 채 저장하면 기존 값이 유지됩니다.
-          </p>
-
-          <div className="space-y-6">
-            <hr className="border-gray-300 dark:border-gray-700" />
-
-            <div className="flex flex-wrap gap-6">
-              <div className="max-w-xs w-full">
-                <FormLabel>사용할 AI 제공자</FormLabel>
-                <div className="flex flex-col gap-2 mt-2">
-                  {(
-                    [
-                      { value: "openai", label: "OpenAI" },
-                      { value: "claude", label: "Claude" },
-                      { value: "local", label: "Local LLM (준비 중)" },
-                    ] as const
-                  ).map((option) => (
-                    <label
-                      key={option.value}
-                      className="flex items-center gap-2 cursor-pointer"
-                    >
-                      <input
-                        type="radio"
-                        name="ai-provider"
-                        checked={aiSettings.provider === option.value}
-                        onChange={() => {
-                          setAiSettings({ ...aiSettings, provider: option.value });
-                          setAiModelOptions([]);
-                        }}
-                      />
-                      <span className="text-base text-gray-800 dark:text-gray-200">
-                        {option.label}
-                      </span>
-                    </label>
-                  ))}
-                </div>
-
-                {aiSettings.provider !== "local" && (
-                  <ActionButton
-                    onClick={handleRefreshAiModels}
-                    disabled={loadingAiModels}
-                    className="mt-4 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600"
-                    title="입력된(또는 저장된) API 키로 모델 목록 조회"
-                  >
-                    {loadingAiModels ? "조회 중..." : "모델목록 호출"}
-                  </ActionButton>
-                )}
-              </div>
-
-              {aiSettings.provider === "local" ? (
-                <p className="text-base text-gray-500 dark:text-gray-400">
-                  로컬 LLM 연동은 아직 준비 중입니다. 선택해도 실제 검증에는
-                  적용되지 않습니다.
-                </p>
-              ) : (
-                <>
-                  <div className="max-w-sm w-full">
-                    <FormLabel>API 키</FormLabel>
-                    <TextInput
-                      type="password"
-                      isRequired={false}
-                      value={currentAiApiKey}
-                      onChange={(e) =>
-                        setAiSettings({
-                          ...aiSettings,
-                          [aiSettings.provider === "claude"
-                            ? "anthropicApiKey"
-                            : "openaiApiKey"]: e.target.value,
-                        })
-                      }
-                      placeholder={
-                        currentAiHasKey
-                          ? "설정됨 - 변경하려면 새 키 입력"
-                          : "설정되지 않음"
-                      }
-                    />
-                  </div>
-
-                  <div className="max-w-sm w-full">
-                    <FormLabel>모델</FormLabel>
-                    <TextInput
-                      isRequired={false}
-                      value={currentAiModel}
-                      onChange={(e) =>
-                        setAiSettings({
-                          ...aiSettings,
-                          [currentAiModelField]: e.target.value,
-                        })
-                      }
-                      placeholder={
-                        aiSettings.provider === "openai"
-                          ? "예: gpt-4o (비우면 기본값 사용)"
-                          : "예: claude-haiku-4-5 (비우면 기본값 사용)"
-                      }
-                    />
-                    <div className="mt-2 h-40 overflow-y-auto scrollbar-hide border border-gray-200 dark:border-gray-700 rounded-md divide-y divide-gray-100 dark:divide-gray-700">
-                      {aiModelOptions.length > 0 ? (
-                        aiModelOptions.map((model) => (
-                          <button
-                            type="button"
-                            key={model}
-                            onClick={() =>
-                              setAiSettings({
-                                ...aiSettings,
-                                [currentAiModelField]: model,
-                              })
-                            }
-                            className="w-full text-left px-3 py-1.5 text-base text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-                          >
-                            {model}
-                          </button>
-                        ))
-                      ) : (
-                        <p className="px-3 py-2 text-base text-gray-400 dark:text-gray-500">
-                          "모델목록 호출" 버튼을 누르면 여기에 목록이 표시됩니다.
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-
-            <div className="flex justify-end mt-2">
-              <button
-                onClick={handleSaveAiSettings}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-md text-base font-bold transition shadow-sm"
-              >
-                저장
-              </button>
-            </div>
-          </div>
-        </section>
-      )}
-
-      <section className="bg-red-50 dark:bg-red-900/10 shadow rounded-lg p-6 border border-red-200 dark:border-red-900/30 transition-colors">
-        <h2 className="text-lg font-semibold text-red-800 dark:text-red-300 mb-4">
-          데이터 및 파일 정리
-        </h2>
-        <p className="text-base text-red-600 dark:text-red-400 mb-6">
-          연도가 지난 교육 자료와 수료증 파일을 정리하여 <b>PC 용량을 확보</b>할
-          수 있습니다.
-        </p>
-
-        <div className="flex flex-col md:flex-row gap-6 items-start md:items-end">
-          <div>
-            <FormLabel>대상 연도</FormLabel>
-            <input
-              type="number"
-              className="border border-gray-300 dark:border-gray-600 rounded px-3 py-2 w-32 outline-none focus:ring-2 focus:ring-red-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-              value={cleanupYear}
-              onChange={(e) => setCleanupYear(Number(e.target.value))}
-            />
-          </div>
-
-          {/* 삭제 모드 선택 */}
-          <div className="flex flex-col gap-2">
-            <span className="block text-base font-medium text-gray-700 dark:text-gray-300">
-              정리 방식
-            </span>
-            <div className="flex items-center gap-4">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="radio"
-                  name="mode"
-                  checked={cleanupMode === "files_only"}
-                  onChange={() => setCleanupMode("files_only")}
-                  className="text-red-600 focus:ring-red-500"
-                />
-                <span className="text-base text-gray-800 dark:text-gray-200">
-                  <b>파일만 삭제</b> (용량 확보, 이수기록 유지)
-                </span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="radio"
-                  name="mode"
-                  checked={cleanupMode === "all"}
-                  onChange={() => setCleanupMode("all")}
-                  className="text-red-600 focus:ring-red-500"
-                />
-                <span className="text-base text-gray-800 dark:text-gray-200">
-                  전체 삭제 (데이터 포함)
-                </span>
-              </label>
-            </div>
-          </div>
-
-          <button
-            onClick={handleCleanup}
-            className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-md text-base font-bold transition shadow-sm ml-auto"
-          >
-            실행하기
-          </button>
-        </div>
-      </section>
+      <DataCleanupSettings />
 
       <section className="bg-red-50 dark:bg-red-900/10 shadow rounded-lg p-6 border border-red-200 dark:border-red-900/30 transition-colors">
         <h2 className="text-lg font-semibold text-red-800 dark:text-red-300 mb-4">

@@ -3,29 +3,21 @@ import api from "../api/axios";
 import axios from "axios";
 import { getErrorMessage } from "../utils/errorUtils";
 import { downloadBlob } from "../utils/downloadFile";
+import { buildCsvBlob } from "../utils/csv";
 import type { Department, Team, User } from "../types";
 import { useAuthStore } from "../store/authStore";
 import { useRoleFlags } from "../hooks/useRoleFlags";
-import { formatDateWithDay } from "../utils/dateUtils";
 import Select from "../components/Select";
 import TableHeader from "../components/TableHeader";
 import TableRow from "../components/TableRow";
-import FormLabel from "../components/FormLabel";
-import TextInput from "../components/TextInput";
 import toast from "react-hot-toast";
-import FormButton from "../components/FormButton";
 import ActionButton from "../components/ActionButton";
-import Badge from "../components/Badge";
-import { roles } from "../utils/constants";
-
-interface UserEnrollmentStatus {
-  course_id: number;
-  course_name: string;
-  end_date: string;
-  state: number | null;
-  submitted_at: string | null;
-  file_name: string | null;
-}
+import { roles, ROLE_META, getRoleLabel } from "../utils/constants";
+import UserCreateModal from "../components/UserCreateModal";
+import UserEditModal from "../components/UserEditModal";
+import UserStatusModal, {
+  type UserEnrollmentStatus,
+} from "../components/UserStatusModal";
 
 interface Options {
   label: string;
@@ -142,31 +134,34 @@ const AdminUserPage = () => {
     ]);
   };
 
+  const assignableRoleMeta = Object.entries(ROLE_META).filter(
+    ([value]) => Number(value) !== roles["시스템관리자"],
+  );
+
   let roleOptions = [
     { value: ROLE_ALL, label: "모든 권한" },
-    { value: String(roles["일반직원"]), label: "👤 일반직원" },
-    { value: String(roles["팀계담당"]), label: "🛡️ 팀계담당" },
-    { value: String(roles["부서담당"]), label: "⭐ 부서담당" },
-    { value: String(roles["교육담당"]), label: "📚 교육담당" },
-    { value: String(roles["총괄담당"]), label: "👑 총괄담당" },
+    ...assignableRoleMeta.map(([value, meta]) => ({
+      value,
+      label: `${meta.icon} ${meta.label}`,
+    })),
   ];
 
   if (currentUser && currentUser.role === roles["시스템관리자"]) {
+    const adminMeta = ROLE_META[roles["시스템관리자"]];
     roleOptions = [
       ...roleOptions,
-      { value: String(roles["시스템관리자"]), label: "🔝 시스템관리자" },
+      {
+        value: String(roles["시스템관리자"]),
+        label: `${adminMeta.icon} ${adminMeta.label}`,
+      },
     ];
   }
 
-  // 2026. 6. 1. 총괄담당 하위에 부서담당자가 추가될 수 있습니다. (role:3)
-  // 총괄담당을 role 5로, 시스템 관리자를 role 6로 올립니다.
-  const editRoleOptions = [
-    { value: roles["일반직원"], label: "👤 일반직원" },
-    { value: roles["팀계담당"], label: "🛡️ 팀계담당" },
-    { value: roles["부서담당"], label: "⭐ 부서담당" },
-    { value: roles["교육담당"], label: "📚 교육담당" },
-    { value: roles["총괄담당"], label: "👑 총괄담당" },
-  ];
+  // 시스템관리자 role은 UI에서 직접 부여할 수 없어 등록/수정 옵션에서 제외한다.
+  const editRoleOptions = assignableRoleMeta.map(([value, meta]) => ({
+    value: Number(value),
+    label: `${meta.icon} ${meta.label}`,
+  }));
 
   const yearOptions = [thisYear - 1, thisYear, thisYear + 1, thisYear + 2].map(
     (y) => ({
@@ -247,17 +242,14 @@ const AdminUserPage = () => {
       return;
     }
 
-    const header = "id,name,department,team";
-    const rows = filteredUsers.map((u) =>
-      [u.username, u.name, u.department, u.team]
-        .map((cell) => `"${String(cell ?? "").replace(/"/g, '""')}"`)
-        .join(","),
-    );
-    const csvContent = "﻿" + [header, ...rows].join("\n");
-    downloadBlob(
-      new Blob([csvContent], { type: "text/csv;charset=utf-8;" }),
-      "직원목록.csv",
-    );
+    const headers = ["id", "name", "department", "team"];
+    const rows = filteredUsers.map((u) => [
+      u.username,
+      u.name,
+      u.department,
+      u.team,
+    ]);
+    downloadBlob(buildCsvBlob(headers, rows), "직원목록.csv");
   };
 
   const handleDownloadTemplate = () => {
@@ -433,24 +425,6 @@ const AdminUserPage = () => {
     }
   };
 
-  // 권한 텍스트 변환 헬퍼
-  const getRoleName = (role: number) => {
-    switch (role) {
-      case roles["시스템관리자"]:
-        return "🔝 시스템관리자";
-      case roles["총괄담당"]:
-        return "👑 총괄담당";
-      case roles["교육담당"]:
-        return "📚 교육담당";
-      case roles["부서담당"]:
-        return "⭐ 부서담당";
-      case roles["팀계담당"]:
-        return "🛡️ 팀계담당";
-      default:
-        return "👤 일반직원";
-    }
-  };
-
   return (
     <div className="h-full flex flex-col gap-6">
       {/* 헤더 */}
@@ -607,7 +581,7 @@ const AdminUserPage = () => {
                     </td>
                     <TableRow>{user.department}</TableRow>
                     <TableRow>{user.team}</TableRow>
-                    <TableRow>{getRoleName(user.role)}</TableRow>
+                    <TableRow>{getRoleLabel(user.role)}</TableRow>
                     <TableRow>
                       {canManageUsers &&
                         (currentUser?.role === roles["시스템관리자"] ||
@@ -657,287 +631,45 @@ const AdminUserPage = () => {
         )}
       </div>
 
-      {/* 등록 모달 */}
       {showCreateModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md shadow-xl border border-gray-200 dark:border-gray-700">
-            <h2 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">
-              새 사용자 등록
-            </h2>
-            <form onSubmit={handleCreate} className="space-y-4">
-              <div>
-                <FormLabel>고유식별번호 (ID)</FormLabel>
-                <TextInput
-                  value={createForm.username}
-                  onChange={(e) =>
-                    setCreateForm({ ...createForm, username: e.target.value })
-                  }
-                />
-              </div>
-              <div>
-                <FormLabel>이름</FormLabel>
-                <TextInput
-                  value={createForm.name}
-                  onChange={(e) =>
-                    setCreateForm({ ...createForm, name: e.target.value })
-                  }
-                />
-              </div>
-              <div>
-                <FormLabel>초기 비밀번호</FormLabel>
-                <TextInput
-                  type="password"
-                  value={createForm.password}
-                  onChange={(e) =>
-                    setCreateForm({ ...createForm, password: e.target.value })
-                  }
-                />
-              </div>
-              <div className="flex-1">
-                <FormLabel>부서</FormLabel>
-                <Select
-                  options={departmentOptions}
-                  value={createForm.departmentId}
-                  onChange={(e) => {
-                    const deptId = Number(e.target.value);
-                    const deptName =
-                      departments.find((d) => d.id === deptId)?.name ?? "";
-                    setCreateForm({
-                      ...createForm,
-                      department: deptName,
-                      departmentId: deptId,
-                      team: "",
-                      teamId: 0,
-                    });
-                    handleFormTeams(deptId);
-                  }}
-                />
-              </div>
-              <div className="flex-1">
-                <FormLabel>팀(계)</FormLabel>
-                <Select
-                  value={createForm.teamId}
-                  onChange={(e) => {
-                    const teamId = Number(e.target.value);
-                    const teamName =
-                      formTeams.find((t) => t.id === teamId)?.name ?? "";
-                    setCreateForm({ ...createForm, teamId, team: teamName });
-                  }}
-                  options={formTeamOptions}
-                />
-              </div>
-              <div>
-                <FormLabel>권한</FormLabel>
-                <Select
-                  value={createForm.role}
-                  onChange={(e) =>
-                    setCreateForm({
-                      ...createForm,
-                      role: Number(e.target.value),
-                    })
-                  }
-                  options={editRoleOptions}
-                />
-              </div>
-
-              <div className="flex justify-end gap-2 mt-6">
-                <FormButton
-                  onClick={() => setShowCreateModal(false)}
-                  className="dark:hover:bg-gray-600"
-                >
-                  취소
-                </FormButton>
-                <button
-                  type="submit"
-                  className="px-4 py-2 text-white bg-indigo-600 rounded-md hover:bg-indigo-700 transition"
-                >
-                  등록하기
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+        <UserCreateModal
+          form={createForm}
+          onChange={setCreateForm}
+          onSubmit={handleCreate}
+          onClose={() => setShowCreateModal(false)}
+          onDepartmentChange={handleFormTeams}
+          departments={departments}
+          departmentOptions={departmentOptions}
+          formTeams={formTeams}
+          formTeamOptions={formTeamOptions}
+          roleOptions={editRoleOptions}
+        />
       )}
 
-      {/* 사용자 수정 모달 */}
       {showEditModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md shadow-xl border border-gray-200 dark:border-gray-700">
-            <h2 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">
-              사용자 정보 수정
-            </h2>
-            <form onSubmit={handleUpdate} className="space-y-4">
-              <div className="bg-gray-50 dark:bg-gray-700/50 p-3 rounded text-base text-gray-600 dark:text-gray-300 mb-4">
-                <p>
-                  <b>ID:</b> {editForm.username}
-                </p>
-                <p>
-                  <b>성명:</b> {editForm.name}
-                </p>
-              </div>
-
-              <div>
-                <FormLabel>부서 변경</FormLabel>
-                <Select
-                  value={editForm.departmentId}
-                  onChange={(e) => {
-                    const deptId = Number(e.target.value);
-                    const deptName =
-                      departments.find((d) => d.id === deptId)?.name ?? "";
-                    setEditForm({
-                      ...editForm,
-                      department: deptName,
-                      departmentId: deptId,
-                      team: "",
-                      teamId: 0,
-                    });
-                    handleFormTeams(deptId);
-                  }}
-                  options={departmentOptions}
-                />
-              </div>
-
-              <div>
-                <FormLabel>팀계 변경</FormLabel>
-                <Select
-                  value={editForm.teamId}
-                  onChange={(e) => {
-                    const teamId = Number(e.target.value);
-                    const teamName =
-                      formTeams.find((t) => t.id === teamId)?.name ?? "";
-                    setEditForm({ ...editForm, teamId, team: teamName });
-                  }}
-                  options={formTeamOptions}
-                />
-              </div>
-
-              <div>
-                <FormLabel>권한 변경</FormLabel>
-                <Select
-                  value={editForm.role}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, role: Number(e.target.value) })
-                  }
-                  options={editRoleOptions}
-                />
-              </div>
-
-              <div>
-                <FormLabel>비밀번호 변경</FormLabel>
-                <TextInput
-                  type="password"
-                  isRequired={false}
-                  placeholder="변경하려면 입력하세요 (비워두면 유지)"
-                  value={editForm.password}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, password: e.target.value })
-                  }
-                />
-              </div>
-
-              <div className="flex justify-end gap-2 mt-6">
-                <FormButton
-                  onClick={() => setShowEditModal(false)}
-                  className="dark:hover:bg-gray-600"
-                >
-                  취소
-                </FormButton>
-                <button
-                  type="submit"
-                  className="px-4 py-2 text-white bg-indigo-600 rounded-md hover:bg-indigo-700 transition"
-                >
-                  수정완료
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+        <UserEditModal
+          form={editForm}
+          onChange={setEditForm}
+          onSubmit={handleUpdate}
+          onClose={() => setShowEditModal(false)}
+          onDepartmentChange={handleFormTeams}
+          departments={departments}
+          departmentOptions={departmentOptions}
+          formTeams={formTeams}
+          formTeamOptions={formTeamOptions}
+          roleOptions={editRoleOptions}
+        />
       )}
 
-      {/* 이수 현황 모달 */}
       {showStatusModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-lg w-full max-w-2xl max-h-[85vh] shadow-xl flex flex-col border border-gray-200 dark:border-gray-700">
-            {/* 모달 헤더 */}
-            <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
-              <div>
-                <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-                  {selectedUserName}님의 교육 이수 현황
-                </h2>
-                <p className="text-base text-gray-500 dark:text-gray-400 mt-1">
-                  해당 직원의 필수 교육 이수 내역을 확인합니다.
-                </p>
-              </div>
-
-              {/* 연도 선택 필터 */}
-              <Select
-                value={statusYear}
-                onChange={(e) => setStatusYear(Number(e.target.value))}
-                options={yearOptions}
-                className="w-28"
-              />
-            </div>
-
-            {/* 모달 본문 (테이블) */}
-            <div className="p-0 flex-1 overflow-hidden overflow-y-auto scrollbar-hide max-h-96">
-              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                <thead className="bg-gray-50 dark:bg-gray-700 sticky top-0">
-                  <tr>
-                    <TableHeader>교육명</TableHeader>
-                    <TableHeader>마감일</TableHeader>
-                    <TableHeader>상태</TableHeader>
-                    <TableHeader>제출일</TableHeader>
-                  </tr>
-                </thead>
-                <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                  {selectedUserStatus.length > 0 ? (
-                    selectedUserStatus.map((status) => (
-                      <tr
-                        key={status.course_id}
-                        className="hover:bg-gray-50 dark:hover:bg-gray-700/50"
-                      >
-                        <TableRow className="font-bold text-left text-gray-600 dark:text-white">
-                          {status.course_name}
-                        </TableRow>
-                        <TableRow>
-                          {formatDateWithDay(status.end_date)}
-                        </TableRow>
-                        <td className="px-6 py-4 text-center">
-                          {<Badge isDone={status.state === 2} />}
-                        </td>
-                        <TableRow>
-                          {status.state === 2 ? (
-                            <span>{status.submitted_at?.split(" ")[0]}</span>
-                          ) : (
-                            <span>-</span>
-                          )}
-                        </TableRow>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td
-                        colSpan={4}
-                        className="text-center py-6 text-gray-500 dark:text-gray-400"
-                      >
-                        해당 연도에 등록된 교육 과정이 없습니다.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end">
-              <FormButton
-                onClick={() => setShowStatusModal(false)}
-                className="dark:hover:bg-gray-600"
-              >
-                닫기
-              </FormButton>
-            </div>
-          </div>
-        </div>
+        <UserStatusModal
+          userName={selectedUserName}
+          statusList={selectedUserStatus}
+          statusYear={statusYear}
+          onStatusYearChange={setStatusYear}
+          yearOptions={yearOptions}
+          onClose={() => setShowStatusModal(false)}
+        />
       )}
     </div>
   );

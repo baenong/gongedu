@@ -2,10 +2,9 @@ import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import requestIp from "request-ip";
 import ipRangeCheck from "ip-range-check";
-import { roles } from "../../constants.js";
+import { roles, LOCAL_RANGES } from "../../constants.js";
 
 dotenv.config();
-const LOCAL_RANGES = ["127.0.0.1", "::1", "::ffff:127.0.0.1", "172.16.0.0/12"];
 
 // 로그인 여부 확인 (토큰 유효성 검사)
 export const authenticateToken = (req, res, next) => {
