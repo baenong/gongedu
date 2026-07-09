@@ -2,13 +2,18 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { downloadBlob } from "./downloadFile";
 
 describe("downloadBlob", () => {
-  let createObjectURLMock: ReturnType<typeof vi.fn>;
-  let revokeObjectURLMock: ReturnType<typeof vi.fn>;
+  // URL.createObjectURL/revokeObjectURL의 실제 타입과 정확히 맞춰줘야
+  // vi.fn()의 느슨한 추론 타입(Mock<Procedure | Constructable>)이 전역 타입에
+  // 할당되지 않는 타입 에러가 나지 않는다.
+  let createObjectURLMock: (obj: Blob | MediaSource) => string;
+  let revokeObjectURLMock: (url: string) => void;
 
   beforeEach(() => {
     vi.useFakeTimers();
-    createObjectURLMock = vi.fn(() => "blob:mock-url");
-    revokeObjectURLMock = vi.fn();
+    createObjectURLMock = vi.fn<(obj: Blob | MediaSource) => string>(
+      () => "blob:mock-url",
+    );
+    revokeObjectURLMock = vi.fn<(url: string) => void>();
     URL.createObjectURL = createObjectURLMock;
     URL.revokeObjectURL = revokeObjectURLMock;
   });
