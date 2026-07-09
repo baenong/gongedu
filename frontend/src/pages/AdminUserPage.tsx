@@ -4,7 +4,7 @@ import axios from "axios";
 import { getErrorMessage } from "../utils/errorUtils";
 import { downloadBlob } from "../utils/downloadFile";
 import { buildCsvBlob } from "../utils/csv";
-import type { Department, Team, User } from "../types";
+import type { Department, SelectOption, Team, User } from "../types";
 import { useAuthStore } from "../store/authStore";
 import { useRoleFlags } from "../hooks/useRoleFlags";
 import Select from "../components/Select";
@@ -17,11 +17,6 @@ import UserCreateModal from "../components/UserCreateModal";
 import UserEditModal from "../components/UserEditModal";
 import UserStatusModal from "../components/UserStatusModal";
 
-interface Options {
-  label: string;
-  value: number;
-}
-
 const ROLE_ALL = "all";
 
 const AdminUserPage = () => {
@@ -30,7 +25,6 @@ const AdminUserPage = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   // 조직 및 팀
-  const [departments, setDepartments] = useState<Department[]>([]);
   const [allTeams, setAllTeams] = useState<Team[]>([]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -73,10 +67,10 @@ const AdminUserPage = () => {
   const [filterTeam, setFilterTeam] = useState(-1);
   const [filterDepartment, setFilterDepartment] = useState(-1);
   const [filterRole, setFilterRole] = useState(ROLE_ALL);
-  const [teamOptions, setTeamOptions] = useState<Options[]>([
+  const [teamOptions, setTeamOptions] = useState<SelectOption[]>([
     { label: "모든 팀(계)", value: 0 },
   ]);
-  const [departmentOptions, setDepartmentOptions] = useState<Options[]>([
+  const [departmentOptions, setDepartmentOptions] = useState<SelectOption[]>([
     { label: "모든 부서", value: -1 },
   ]);
 
@@ -164,7 +158,6 @@ const AdminUserPage = () => {
     try {
       const resDept = await api.get("/departments");
       const dataDept = resDept.data;
-      setDepartments(dataDept);
       setDepartmentOptions([
         { label: "모든 부서", value: -1 },
         ...dataDept.map((dept: Department) => ({
@@ -588,7 +581,6 @@ const AdminUserPage = () => {
           onChange={setCreateForm}
           onSubmit={handleCreate}
           onClose={() => setShowCreateModal(false)}
-          departments={departments}
           departmentOptions={departmentOptions}
           allTeams={allTeams}
           roleOptions={editRoleOptions}
@@ -601,7 +593,6 @@ const AdminUserPage = () => {
           onChange={setEditForm}
           onSubmit={handleUpdate}
           onClose={() => setShowEditModal(false)}
-          departments={departments}
           departmentOptions={departmentOptions}
           allTeams={allTeams}
           roleOptions={editRoleOptions}

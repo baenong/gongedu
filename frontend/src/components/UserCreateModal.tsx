@@ -3,7 +3,7 @@ import FormButton from "./FormButton";
 import FormLabel from "./FormLabel";
 import Select from "./Select";
 import TextInput from "./TextInput";
-import type { Department, Team } from "../types";
+import type { SelectOption, Team } from "../types";
 
 export interface NewUserForm {
   username: string;
@@ -21,10 +21,9 @@ interface UserCreateModalProps {
   onChange: (form: NewUserForm) => void;
   onSubmit: (e: React.FormEvent) => void;
   onClose: () => void;
-  departments: Department[];
-  departmentOptions: { value: number; label: string }[];
+  departmentOptions: SelectOption[];
   allTeams: Team[];
-  roleOptions: { value: number; label: string }[];
+  roleOptions: SelectOption[];
 }
 
 const UserCreateModal = ({
@@ -32,7 +31,6 @@ const UserCreateModal = ({
   onChange,
   onSubmit,
   onClose,
-  departments,
   departmentOptions,
   allTeams,
   roleOptions,
@@ -85,7 +83,8 @@ const UserCreateModal = ({
               onChange={(e) => {
                 const deptId = Number(e.target.value);
                 const deptName =
-                  departments.find((d) => d.id === deptId)?.name ?? "";
+                  departmentOptions.find((d) => d.value === deptId)?.label ??
+                  "";
                 onChange({
                   ...form,
                   department: deptName,

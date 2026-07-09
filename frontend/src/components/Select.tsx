@@ -1,9 +1,5 @@
 import React from "react";
-
-interface SelectOption {
-  value: string | number;
-  label: string;
-}
+import type { SelectOption } from "../types";
 
 interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
   options: SelectOption[]; // 옵션 리스트

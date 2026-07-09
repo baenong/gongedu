@@ -6,7 +6,7 @@ import { formatDateWithDay } from "../utils/dateUtils";
 import { CERTIFICATE_FILE_ACCEPT, roles } from "../utils/constants";
 import { useAuthStore } from "../store/authStore";
 import { useRoleFlags } from "../hooks/useRoleFlags";
-import type { Course } from "../types";
+import type { Course, SelectOption } from "../types";
 
 export interface UserStatus {
   user_id: number;
@@ -25,11 +25,6 @@ export interface UserStatus {
   ai_verified: boolean | null;
 }
 
-interface Option {
-  value: number | string;
-  label: string;
-}
-
 // 직원 이수 현황 표를 좁히는 필터 4종(부서/팀/이수여부/AI검증)의 값·옵션·변경 핸들러를
 // 하나로 묶어서 전달한다. 필터를 추가/제거할 때 이 타입 하나만 건드리면 된다.
 export interface CourseStatusFilters {
@@ -37,10 +32,10 @@ export interface CourseStatusFilters {
   team: number;
   state: string;
   aiStatus: string;
-  departmentOptions: Option[];
-  teamOptions: Option[];
-  stateOptions: Option[];
-  aiStatusOptions: Option[];
+  departmentOptions: SelectOption[];
+  teamOptions: SelectOption[];
+  stateOptions: SelectOption[];
+  aiStatusOptions: SelectOption[];
   onDepartmentChange: (departmentId: number) => void;
   onTeamChange: (teamId: number) => void;
   onStateChange: (state: string) => void;
@@ -57,7 +52,7 @@ interface CourseDetailModalProps {
   orgLabel: string;
   filteredStatusList: UserStatus[];
   filters: CourseStatusFilters;
-  courseDepartmentOptions: Option[];
+  courseDepartmentOptions: SelectOption[];
   onCsvDownload: () => void;
   onZipDownload: () => void;
   onDeleteCourse: () => void;

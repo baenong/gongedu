@@ -1,3 +1,9 @@
+// <Select>에 넘기는 옵션 하나. 여러 컴포넌트가 각자 인라인으로 재정의하던 것을 통일한 공용 타입이다.
+export interface SelectOption {
+  value: string | number;
+  label: string;
+}
+
 // 사용자 정보 타입
 export interface User {
   id: number;

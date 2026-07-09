@@ -3,7 +3,7 @@ import FormButton from "./FormButton";
 import FormLabel from "./FormLabel";
 import Select from "./Select";
 import TextInput from "./TextInput";
-import type { Department, Team } from "../types";
+import type { SelectOption, Team } from "../types";
 
 export interface EditUserForm {
   id: number;
@@ -22,10 +22,9 @@ interface UserEditModalProps {
   onChange: (form: EditUserForm) => void;
   onSubmit: (e: React.FormEvent) => void;
   onClose: () => void;
-  departments: Department[];
-  departmentOptions: { value: number; label: string }[];
+  departmentOptions: SelectOption[];
   allTeams: Team[];
-  roleOptions: { value: number; label: string }[];
+  roleOptions: SelectOption[];
 }
 
 const UserEditModal = ({
@@ -33,7 +32,6 @@ const UserEditModal = ({
   onChange,
   onSubmit,
   onClose,
-  departments,
   departmentOptions,
   allTeams,
   roleOptions,
@@ -72,7 +70,8 @@ const UserEditModal = ({
               onChange={(e) => {
                 const deptId = Number(e.target.value);
                 const deptName =
-                  departments.find((d) => d.id === deptId)?.name ?? "";
+                  departmentOptions.find((d) => d.value === deptId)?.label ??
+                  "";
                 onChange({
                   ...form,
                   department: deptName,

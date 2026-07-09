@@ -639,8 +639,8 @@ const MainPage = () => {
                   onClick={() => openDetailModal(course)}
                   onUpload={(file) => handleFileUpload(course.id, file)}
                   onDownload={() =>
-                    enrollment &&
-                    handleMyDownload(enrollment.id, enrollment.file_name!)
+                    enrollment?.file_name &&
+                    handleMyDownload(enrollment.id, enrollment.file_name)
                   }
                   onDelete={() => enrollment && deleteMyDownload(enrollment.id)}
                 />

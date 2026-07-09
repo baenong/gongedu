@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { Department, Team } from "../types";
+import type { Department, SelectOption, Team } from "../types";
 import type {
   CourseStatusFilters,
   UserStatus,
@@ -17,9 +17,8 @@ export function useCourseFilters(
   const [filterTeam, setFilterTeam] = useState(0);
   const [filterState, setFilterState] = useState("all");
   const [filterAiStatus, setFilterAiStatus] = useState("all");
-  const [filterTeamOptions, setFilterTeamOptions] = useState<
-    { value: number; label: string }[]
-  >(DEFAULT_TEAM_OPTIONS);
+  const [filterTeamOptions, setFilterTeamOptions] =
+    useState<SelectOption[]>(DEFAULT_TEAM_OPTIONS);
 
   const departmentOptions = [
     { value: 0, label: "모든 부서" },

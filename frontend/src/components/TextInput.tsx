@@ -18,9 +18,9 @@ const TextInput = ({
   return (
     <input
       type={type}
+      required={isRequired}
       {...props}
       className={twMerge(baseStyle, className)}
-      required={isRequired}
     />
   );
 };

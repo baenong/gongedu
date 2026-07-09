@@ -4,6 +4,7 @@ import Select from "./Select";
 import TextInput from "./TextInput";
 import { useAuthStore } from "../store/authStore";
 import { roles } from "../utils/constants";
+import type { SelectOption } from "../types";
 
 export interface NewCourseForm {
   name: string;
@@ -17,7 +18,7 @@ interface CourseCreateModalProps {
   onChange: (course: NewCourseForm) => void;
   onSubmit: (e: React.FormEvent) => void;
   onClose: () => void;
-  departmentOptions: { value: number; label: string }[];
+  departmentOptions: SelectOption[];
 }
 
 const CourseCreateModal = ({
