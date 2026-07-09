@@ -1,6 +1,9 @@
 import { useState } from "react";
 import type { Department, Team } from "../types";
-import type { UserStatus } from "../components/CourseDetailModal";
+import type {
+  CourseStatusFilters,
+  UserStatus,
+} from "../components/CourseDetailModal";
 
 const DEFAULT_TEAM_OPTIONS = [{ label: "모든 팀(계)", value: 0 }];
 
@@ -90,22 +93,29 @@ export function useCourseFilters(
     return matchDepartment && matchTeam && matchState && matchAiStatus;
   });
 
-  return {
-    filterDepartment,
-    filterTeam,
-    filterState,
-    filterAiStatus,
-    filterTeamOptions,
-    setFilterTeam,
-    setFilterState,
-    setFilterAiStatus,
-    setFilterTeamOptions,
+  // CourseDetailModal이 그대로 받는 형태(CourseStatusFilters)로 미리 묶어서 반환한다.
+  // MainPage는 이 객체를 분해하지 않고 filters={filters}로 그대로 전달하면 된다.
+  const filters: CourseStatusFilters = {
+    department: filterDepartment,
+    team: filterTeam,
+    state: filterState,
+    aiStatus: filterAiStatus,
     departmentOptions,
+    teamOptions: filterTeamOptions,
+    stateOptions: completeOptions,
+    aiStatusOptions: aiFilterOptions,
+    onDepartmentChange: handleFilterDeptChange,
+    onTeamChange: setFilterTeam,
+    onStateChange: setFilterState,
+    onAiStatusChange: setFilterAiStatus,
+  };
+
+  return {
+    filters,
     courseDepartmentOptions,
-    completeOptions,
-    aiFilterOptions,
-    handleFilterDeptChange,
-    resetFilters,
     filteredStatusList,
+    resetFilters,
+    // 부서담당 시나리오처럼 조회 응답에서 팀 옵션을 계산해야 하는 경우를 위해 노출.
+    setFilterTeamOptions,
   };
 }

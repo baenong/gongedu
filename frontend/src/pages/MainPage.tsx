@@ -79,22 +79,11 @@ const MainPage = () => {
   const [allTeams, setAllTeams] = useState<Team[]>([]);
 
   const {
-    filterDepartment,
-    filterTeam,
-    filterState,
-    filterAiStatus,
-    filterTeamOptions,
-    setFilterTeam,
-    setFilterState,
-    setFilterAiStatus,
-    setFilterTeamOptions,
-    departmentOptions,
+    filters,
     courseDepartmentOptions,
-    completeOptions,
-    aiFilterOptions,
-    handleFilterDeptChange,
-    resetFilters,
     filteredStatusList,
+    resetFilters,
+    setFilterTeamOptions,
   } = useCourseFilters(departments, allTeams, courseStatusList);
 
   const yearOptions = [thisYear - 1, thisYear, thisYear + 1, thisYear + 2].map(
@@ -246,7 +235,6 @@ const MainPage = () => {
     try {
       if (isManager && isOwnCourse(course)) {
         const res = await api.get(`/enrollments/course/${course.id}`);
-        setFilterState("all");
         setCourseStatusList(res.data);
 
         // 부서담당: 응답 데이터에서 팀 목록 추출하여 팀 필터 옵션 구성
@@ -388,8 +376,8 @@ const MainPage = () => {
     try {
       const params: Record<string, number> = {};
       if (isSuperAdmin) {
-        if (filterDepartment !== 0) params.departmentId = filterDepartment;
-        if (filterTeam !== 0) params.teamId = filterTeam;
+        if (filters.department !== 0) params.departmentId = filters.department;
+        if (filters.team !== 0) params.teamId = filters.team;
       }
       const response = await api.get(
         `/enrollments/course/${courseId}/download-zip`,
@@ -706,20 +694,7 @@ const MainPage = () => {
                 : (user?.team ?? "")
           }
           filteredStatusList={filteredStatusList}
-          filters={{
-            department: filterDepartment,
-            team: filterTeam,
-            state: filterState,
-            aiStatus: filterAiStatus,
-            departmentOptions,
-            teamOptions: filterTeamOptions,
-            stateOptions: completeOptions,
-            aiStatusOptions: aiFilterOptions,
-            onDepartmentChange: handleFilterDeptChange,
-            onTeamChange: setFilterTeam,
-            onStateChange: setFilterState,
-            onAiStatusChange: setFilterAiStatus,
-          }}
+          filters={filters}
           courseDepartmentOptions={courseDepartmentOptions}
           onCsvDownload={handleCsvDownload}
           onZipDownload={() =>
