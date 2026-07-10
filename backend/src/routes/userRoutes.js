@@ -290,7 +290,8 @@ router.post("/upload-excel", upload.single("file"), async (req, res) => {
       const department = String(row.getCell(3).value || "").trim();
       const team = String(row.getCell(4).value || "").trim();
 
-      if (username && name && department && team) {
+      // team은 빈 칸일 수 있다 (과장처럼 특정 팀(계)에 소속되지 않은 직원 → 미지정 처리)
+      if (username && name && department) {
         usersData.push({ username, name, department, team });
       }
     });
@@ -321,13 +322,20 @@ router.post("/upload-excel", upload.single("file"), async (req, res) => {
             continue;
           }
 
-          const teamRow = teamStmt.get(user.team, dept.id);
-          if (!teamRow) {
-            console.error(
-              `[엑셀업로드 실패] ${user.username}: 존재하지 않는 팀 "${user.team}" (부서: ${user.department})`,
-            );
-            failCount++;
-            continue;
+          // team 칸이 비어있으면 미지정(team_id=0)으로 등록한다.
+          let teamId = 0;
+          let teamName = "";
+          if (user.team) {
+            const teamRow = teamStmt.get(user.team, dept.id);
+            if (!teamRow) {
+              console.error(
+                `[엑셀업로드 실패] ${user.username}: 존재하지 않는 팀 "${user.team}" (부서: ${user.department})`,
+              );
+              failCount++;
+              continue;
+            }
+            teamId = teamRow.id;
+            teamName = user.team;
           }
 
           stmt.run(
@@ -336,8 +344,8 @@ router.post("/upload-excel", upload.single("file"), async (req, res) => {
             user.name,
             user.department,
             dept.id,
-            user.team,
-            teamRow.id,
+            teamName,
+            teamId,
             roles["일반직원"],
           );
           successCount++;
@@ -379,7 +387,8 @@ router.post("/upload-edit-excel", upload.single("file"), async (req, res) => {
       const department = String(row.getCell(3).value || "").trim();
       const team = String(row.getCell(4).value || "").trim();
 
-      if (username && name && department && team) {
+      // team은 빈 칸일 수 있다 (과장처럼 특정 팀(계)에 소속되지 않은 직원 → 미지정 처리)
+      if (username && name && department) {
         usersData.push({ username, name, department, team });
       }
     });
@@ -413,21 +422,28 @@ router.post("/upload-edit-excel", upload.single("file"), async (req, res) => {
           continue;
         }
 
-        const teamRow = teamStmt.get(user.team, dept.id);
-        if (!teamRow) {
-          console.error(
-            `[엑셀일괄변경 실패] ${user.username}: 존재하지 않는 팀 "${user.team}" (부서: ${user.department})`,
-          );
-          notFoundCount++;
-          continue;
+        // team 칸이 비어있으면 미지정(team_id=0)으로 변경한다.
+        let teamId = 0;
+        let teamName = "";
+        if (user.team) {
+          const teamRow = teamStmt.get(user.team, dept.id);
+          if (!teamRow) {
+            console.error(
+              `[엑셀일괄변경 실패] ${user.username}: 존재하지 않는 팀 "${user.team}" (부서: ${user.department})`,
+            );
+            notFoundCount++;
+            continue;
+          }
+          teamId = teamRow.id;
+          teamName = user.team;
         }
 
         const result = stmt.run(
           user.name,
           user.department,
           dept.id,
-          user.team,
-          teamRow.id,
+          teamName,
+          teamId,
           user.username,
         );
 
