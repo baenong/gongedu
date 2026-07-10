@@ -61,7 +61,7 @@ const IpAccessSettings = () => {
           </div>
           <FormButton
             onClick={() => handleSave("allowed_ip_range", settings.ipWhitelist)}
-            className="px-4 py-16 dark:hover:bg-gray-600"
+            className="px-4 dark:hover:bg-gray-600"
           >
             저장
           </FormButton>
