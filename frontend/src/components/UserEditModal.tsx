@@ -1,8 +1,8 @@
-import { useMemo } from "react";
 import FormButton from "./FormButton";
 import FormLabel from "./FormLabel";
 import Select from "./Select";
 import TextInput from "./TextInput";
+import { applyDepartmentChange, applyTeamChange, useTeamSelect } from "../hooks/useTeamSelect";
 import type { SelectOption, Team } from "../types";
 
 export interface EditUserForm {
@@ -38,14 +38,10 @@ const UserEditModal = ({
 }: UserEditModalProps) => {
   // 선택된 부서의 팀(계) 목록은 form.departmentId에서 항상 파생되므로,
   // 부모가 별도 상태로 들고 있을 필요 없이 여기서 바로 계산한다.
-  const formTeams = useMemo(
-    () => allTeams.filter((t) => t.departmentId === form.departmentId),
-    [allTeams, form.departmentId],
+  const { teams: formTeams, teamOptions: formTeamOptions } = useTeamSelect(
+    allTeams,
+    form.departmentId,
   );
-  const formTeamOptions = [
-    { label: "모든 팀(계)", value: -1 },
-    ...formTeams.map((t) => ({ label: t.name, value: t.id })),
-  ];
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -67,19 +63,15 @@ const UserEditModal = ({
             <FormLabel>부서 변경</FormLabel>
             <Select
               value={form.departmentId}
-              onChange={(e) => {
-                const deptId = Number(e.target.value);
-                const deptName =
-                  departmentOptions.find((d) => d.value === deptId)?.label ??
-                  "";
-                onChange({
-                  ...form,
-                  department: deptName,
-                  departmentId: deptId,
-                  team: "",
-                  teamId: 0,
-                });
-              }}
+              onChange={(e) =>
+                onChange(
+                  applyDepartmentChange(
+                    form,
+                    departmentOptions,
+                    Number(e.target.value),
+                  ),
+                )
+              }
               options={departmentOptions}
             />
           </div>
@@ -88,12 +80,11 @@ const UserEditModal = ({
             <FormLabel>팀계 변경</FormLabel>
             <Select
               value={form.teamId}
-              onChange={(e) => {
-                const teamId = Number(e.target.value);
-                const teamName =
-                  formTeams.find((t) => t.id === teamId)?.name ?? "";
-                onChange({ ...form, teamId, team: teamName });
-              }}
+              onChange={(e) =>
+                onChange(
+                  applyTeamChange(form, formTeams, Number(e.target.value)),
+                )
+              }
               options={formTeamOptions}
             />
           </div>

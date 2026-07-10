@@ -75,8 +75,11 @@ router.post("/", (req, res) => {
     if (assignedRole >= req.user.role) {
       return res.status(403).json({ message: "권한이 없습니다." });
     }
+    if (!password) {
+      return res.status(400).json({ message: "비밀번호를 입력해주세요." });
+    }
 
-    const hashedPassword = bcrypt.hashSync(password || "1234", 10);
+    const hashedPassword = bcrypt.hashSync(password, 10);
     const stmt = db.prepare(`
       INSERT INTO users (username, password, name, department, department_id, team, team_id, role)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)

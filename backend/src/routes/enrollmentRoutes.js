@@ -501,14 +501,23 @@ router.get("/course/:courseId/download-zip", authenticateToken, (req, res) => {
     }
 
     // 교육담당: 쿼리 파라미터 필터 적용
-    const filterDeptId = role === roles["교육담당"] ? parseInt(req.query.departmentId) || 0 : 0;
-    const filterTeamId = role === roles["교육담당"] ? parseInt(req.query.teamId) || 0 : 0;
+    // department_id/team_id 0은 실제로 존재하는 "미지정" 행이므로, 파라미터가 아예
+    // 없는 경우(필터 없음)와 0이 명시적으로 넘어온 경우(미지정으로 필터링)를 구분해야 한다.
+    const parseFilterId = (value) => {
+      if (value === undefined) return null;
+      const parsed = parseInt(value, 10);
+      return Number.isNaN(parsed) ? null : parsed;
+    };
+    const filterDeptId =
+      role === roles["교육담당"] ? parseFilterId(req.query.departmentId) : null;
+    const filterTeamId =
+      role === roles["교육담당"] ? parseFilterId(req.query.teamId) : null;
 
-    if (filterDeptId) {
+    if (filterDeptId !== null) {
       query += ` AND u.department_id = ?`;
       params.push(filterDeptId);
     }
-    if (filterTeamId) {
+    if (filterTeamId !== null) {
       query += ` AND u.team_id = ?`;
       params.push(filterTeamId);
     }
@@ -533,7 +542,7 @@ router.get("/course/:courseId/download-zip", authenticateToken, (req, res) => {
       downloadName = `[${safeDept}]${safeCourse}_${timeStr}.zip`;
     } else {
       // 교육담당: 필터 수준에 따라 파일명 결정
-      if (filterTeamId) {
+      if (filterTeamId !== null) {
         const filteredTeam = db.prepare("SELECT name, department_id FROM teams WHERE id = ?").get(filterTeamId);
         const filteredDept = filteredTeam
           ? db.prepare("SELECT name FROM departments WHERE id = ?").get(filteredTeam.department_id)
@@ -541,7 +550,7 @@ router.get("/course/:courseId/download-zip", authenticateToken, (req, res) => {
         const safeDept = sanitizeFilename(filteredDept?.name ?? "");
         const safeTeam = sanitizeFilename(filteredTeam?.name ?? "");
         downloadName = `[${safeDept}]${safeTeam}_${safeCourse}_${timeStr}.zip`;
-      } else if (filterDeptId) {
+      } else if (filterDeptId !== null) {
         const filteredDept = db.prepare("SELECT name FROM departments WHERE id = ?").get(filterDeptId);
         const safeDept = sanitizeFilename(filteredDept?.name ?? "");
         downloadName = `[${safeDept}]${safeCourse}_${timeStr}.zip`;

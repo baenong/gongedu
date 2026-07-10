@@ -98,17 +98,18 @@ const MainPage = () => {
   const fetchData = async (signal?: AbortSignal) => {
     setIsLoading(true);
     try {
-      const courseRes = await api.get(`/courses?year=${year}`, { signal });
+      const [courseRes, enrollRes, resDept, resTeam] = await Promise.all([
+        api.get(`/courses?year=${year}`, { signal }),
+        api.get("/enrollments/my", { signal }),
+        isSuperAdmin ? api.get("/departments", { signal }) : null,
+        isSuperAdmin ? api.get("/departments/teams", { signal }) : null,
+      ]);
       setCourses(courseRes.data);
-
-      const enrollRes = await api.get("/enrollments/my", { signal });
       setMyEnrollments(enrollRes.data);
 
       if (isSuperAdmin) {
-        const resDept = await api.get("/departments", { signal });
-        setDepartments(resDept.data);
-        const resTeam = await api.get("/departments/teams", { signal });
-        setAllTeams(resTeam.data);
+        setDepartments(resDept!.data);
+        setAllTeams(resTeam!.data);
       }
     } catch (error) {
       if (axios.isCancel(error)) return;
@@ -232,10 +233,10 @@ const MainPage = () => {
         if (isDeptManager) {
           const teamMap = new Map<number, string>();
           res.data.forEach((s: UserStatus) => {
-            if (s.teamId) teamMap.set(s.teamId, s.team);
+            teamMap.set(s.teamId, s.team);
           });
           setFilterTeamOptions([
-            { label: "모든 팀(계)", value: 0 },
+            { label: "모든 팀(계)", value: -1 },
             ...[...teamMap.entries()].map(([id, name]) => ({
               value: id,
               label: name,
@@ -367,8 +368,8 @@ const MainPage = () => {
     try {
       const params: Record<string, number> = {};
       if (isSuperAdmin) {
-        if (filters.department !== 0) params.departmentId = filters.department;
-        if (filters.team !== 0) params.teamId = filters.team;
+        if (filters.department !== -1) params.departmentId = filters.department;
+        if (filters.team !== -1) params.teamId = filters.team;
       }
       const response = await api.get(
         `/enrollments/course/${courseId}/download-zip`,

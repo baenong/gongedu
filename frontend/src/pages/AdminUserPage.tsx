@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import api from "../api/axios";
 import axios from "axios";
 import { getErrorMessage } from "../utils/errorUtils";
@@ -68,13 +68,20 @@ const AdminUserPage = () => {
   const [filterDepartment, setFilterDepartment] = useState(-1);
   const [filterRole, setFilterRole] = useState(ROLE_ALL);
   const [teamOptions, setTeamOptions] = useState<SelectOption[]>([
-    { label: "모든 팀(계)", value: 0 },
+    { label: "모든 팀(계)", value: -1 },
   ]);
   const [departmentOptions, setDepartmentOptions] = useState<SelectOption[]>([
     { label: "모든 부서", value: -1 },
   ]);
 
   const { isGeneralManager: canManageUsers } = useRoleFlags(currentUser);
+
+  // 등록/수정 폼의 부서 선택은 "미지정"은 있어도 "모든 부서"라는 실제 배정 값은
+  // 있을 수 없으므로, 목록 필터용 옵션에서 "모든 부서"(value: -1) 항목만 제외한다.
+  const assignableDepartmentOptions = useMemo(
+    () => departmentOptions.filter((d) => d.value !== -1),
+    [departmentOptions],
+  );
 
   const filteredUsers = users.filter((user) => {
     const matchName =
@@ -156,7 +163,10 @@ const AdminUserPage = () => {
     setIsLoading(true);
 
     try {
-      const resDept = await api.get("/departments");
+      const [resDept, resTeam] = await Promise.all([
+        api.get("/departments"),
+        api.get("/departments/teams"),
+      ]);
       const dataDept = resDept.data;
       setDepartmentOptions([
         { label: "모든 부서", value: -1 },
@@ -166,7 +176,6 @@ const AdminUserPage = () => {
         })),
       ]);
 
-      const resTeam = await api.get("/departments/teams");
       const dataTeam = resTeam.data;
       setAllTeams(dataTeam);
       setTeamOptions([{ label: "모든 팀(계)", value: -1 }]);
@@ -581,7 +590,7 @@ const AdminUserPage = () => {
           onChange={setCreateForm}
           onSubmit={handleCreate}
           onClose={() => setShowCreateModal(false)}
-          departmentOptions={departmentOptions}
+          departmentOptions={assignableDepartmentOptions}
           allTeams={allTeams}
           roleOptions={editRoleOptions}
         />
@@ -593,7 +602,7 @@ const AdminUserPage = () => {
           onChange={setEditForm}
           onSubmit={handleUpdate}
           onClose={() => setShowEditModal(false)}
-          departmentOptions={departmentOptions}
+          departmentOptions={assignableDepartmentOptions}
           allTeams={allTeams}
           roleOptions={editRoleOptions}
         />
