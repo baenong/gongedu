@@ -37,14 +37,14 @@ router.post("/", authenticateToken, (req, res) => {
   }
 });
 
-// 다른 사용자들이 남긴 의견 목록 (익명 — 시간/내용/좋아요만 노출)
+// 다른 사용자들이 남긴 의견 목록 (부서 등 민감정보는 제외, 작성자 이름만 노출)
 // GET /api/feedback/public
 router.get("/public", authenticateToken, (req, res) => {
   try {
     const feedbacks = db
       .prepare(
         `
-        SELECT f.id, f.content, f.created_at,
+        SELECT f.id, f.user_name, f.content, f.created_at,
           (SELECT COUNT(*) FROM feedback_likes WHERE feedback_id = f.id) as like_count,
           EXISTS(
             SELECT 1 FROM feedback_likes WHERE feedback_id = f.id AND user_id = ?

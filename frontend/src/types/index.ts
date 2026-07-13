@@ -67,9 +67,10 @@ export interface Feedback {
   created_at: string;
 }
 
-// 익명 공개용 기능개선 의견 타입 (다른 사용자가 볼 수 있는 형태)
+// 공개용 기능개선 의견 타입 (다른 사용자가 볼 수 있는 형태, 작성자 이름만 노출)
 export interface PublicFeedback {
   id: number;
+  user_name: string | null;
   content: string;
   created_at: string;
   like_count: number;

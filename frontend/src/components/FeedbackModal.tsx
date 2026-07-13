@@ -89,7 +89,7 @@ const FeedbackModal = ({ onClose }: FeedbackModalProps) => {
           </p>
         </div>
 
-        {/* 다른 사용자들이 남긴 의견 (익명) */}
+        {/* 다른 사용자들이 남긴 의견 (작성자 이름 표시) */}
         <div className="flex-1 min-h-0 overflow-y-auto px-6 my-4 space-y-5">
           {isLoadingList ? (
             <p className="text-base text-gray-400 text-center py-4">
@@ -105,7 +105,7 @@ const FeedbackModal = ({ onClose }: FeedbackModalProps) => {
                 />
                 <div className="flex-1 min-w-0">
                   <p className="text-xs text-gray-400">
-                    {feedback.created_at}
+                    {feedback.user_name ?? "알 수 없음"} · {feedback.created_at}
                   </p>
                   <p className="text-base text-gray-800 dark:text-gray-100 whitespace-pre-wrap break-words">
                     {feedback.content}

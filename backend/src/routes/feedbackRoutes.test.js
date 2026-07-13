@@ -72,14 +72,14 @@ describe("기능개선 의견 관리 화면 접근 권한 (총괄담당 이상)"
     expect(response.status).toBe(200);
   });
 
-  it("공개 목록(/public)은 작성자 이름/부서를 노출하지 않는다", async () => {
+  it("공개 목록(/public)은 작성자 이름은 노출하고 부서는 노출하지 않는다", async () => {
     const response = await request(app)
       .get("/api/feedback/public")
       .set("Authorization", `Bearer ${educatorToken}`);
 
     expect(response.status).toBe(200);
     for (const feedback of response.body) {
-      expect(feedback).not.toHaveProperty("user_name");
+      expect(feedback).toHaveProperty("user_name");
       expect(feedback).not.toHaveProperty("department");
     }
   });
