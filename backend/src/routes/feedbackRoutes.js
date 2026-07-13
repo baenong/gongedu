@@ -5,6 +5,7 @@ import {
   requireSeniorManager,
 } from "../middlewares/authMiddleware.js";
 import { getCurrentKST } from "../utils/formatHelper.js";
+import { roles } from "../../constants.js";
 
 const router = express.Router();
 
@@ -99,7 +100,8 @@ router.post("/:id/like", authenticateToken, (req, res) => {
   }
 });
 
-// 본인이 작성한 의견 삭제 (실제로는 숨김 처리 — 관리자 이력에는 계속 남음)
+// 본인이 작성한 의견 삭제 (총괄담당 이상은 타인의 의견도 삭제 가능)
+// 실제로는 숨김 처리 — 관리자 이력에는 계속 남음
 // DELETE /api/feedback/:id
 router.delete("/:id", authenticateToken, (req, res) => {
   const { id } = req.params;
@@ -112,7 +114,9 @@ router.delete("/:id", authenticateToken, (req, res) => {
     if (!feedback) {
       return res.status(404).json({ message: "의견을 찾을 수 없습니다." });
     }
-    if (feedback.user_id !== req.user.id) {
+    const isOwner = feedback.user_id === req.user.id;
+    const isSeniorManager = req.user.role >= roles["총괄담당"];
+    if (!isOwner && !isSeniorManager) {
       return res.status(403).json({ message: "본인이 작성한 의견만 삭제할 수 있습니다." });
     }
 
@@ -124,6 +128,30 @@ router.delete("/:id", authenticateToken, (req, res) => {
     res.status(500).json({ message: "서버 오류가 발생했습니다." });
   }
 });
+
+// (총괄담당 이상용) 의견 완전 삭제 — 복구 불가, DB에서 행 자체를 제거
+// DELETE /api/feedback/:id/permanent
+router.delete(
+  "/:id/permanent",
+  authenticateToken,
+  requireSeniorManager,
+  (req, res) => {
+    const { id } = req.params;
+
+    try {
+      const result = db.prepare("DELETE FROM feedbacks WHERE id = ?").run(id);
+
+      if (result.changes === 0) {
+        return res.status(404).json({ message: "의견을 찾을 수 없습니다." });
+      }
+
+      res.json({ message: "의견이 완전히 삭제되었습니다." });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: "서버 오류가 발생했습니다." });
+    }
+  },
+);
 
 // (총괄담당 이상용) 기능개선 의견 목록 조회
 // GET /api/feedback
