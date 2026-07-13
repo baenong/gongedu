@@ -158,7 +158,7 @@ const FeedbackModal = ({ onClose }: FeedbackModalProps) => {
                       </span>{" "}
                       <span className="text-sm">· {feedback.created_at}</span>
                     </p>
-                    <p className="text-base text-gray-800 dark:text-gray-100 whitespace-pre-wrap break-words">
+                    <p className="text-base text-gray-800 dark:text-gray-100 whitespace-pre-wrap wrap-break-word">
                       {feedback.content}
                     </p>
                   </div>
@@ -191,13 +191,13 @@ const FeedbackModal = ({ onClose }: FeedbackModalProps) => {
           </div>
           <div
             className={`pointer-events-none absolute top-0 left-0 right-0 h-10
-              bg-gradient-to-b from-white dark:from-gray-800 to-transparent
+              bg-linear-to-b from-white dark:from-gray-800 to-transparent
               transition-opacity duration-300
               ${showTopFade ? "opacity-100" : "opacity-0"}`}
           />
           <div
             className={`pointer-events-none absolute bottom-0 left-0 right-0 h-10
-              bg-gradient-to-t from-white dark:from-gray-800 to-transparent
+              bg-linear-to-t from-white dark:from-gray-800 to-transparent
               transition-opacity duration-300
               ${showBottomFade ? "opacity-100" : "opacity-0"}`}
           />
