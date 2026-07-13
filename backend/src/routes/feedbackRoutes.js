@@ -52,7 +52,7 @@ router.get("/public", authenticateToken, (req, res) => {
           (f.user_id = ?) as is_mine
         FROM feedbacks f
         WHERE f.deleted = 0
-        ORDER BY f.created_at DESC
+        ORDER BY f.created_at ASC
         `,
       )
       .all(req.user.id, req.user.id);

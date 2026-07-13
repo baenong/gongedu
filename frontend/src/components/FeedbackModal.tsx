@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import api from "../api/axios";
 import toast from "react-hot-toast";
 import FormButton from "./FormButton";
@@ -14,6 +14,17 @@ const FeedbackModal = ({ onClose }: FeedbackModalProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [feedbacks, setFeedbacks] = useState<PublicFeedback[]>([]);
   const [isLoadingList, setIsLoadingList] = useState(false);
+  const [showTopFade, setShowTopFade] = useState(false);
+  const [showBottomFade, setShowBottomFade] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const listEndRef = useRef<HTMLDivElement>(null);
+
+  const updateFade = () => {
+    const el = scrollRef.current;
+    if (!el) return;
+    setShowTopFade(el.scrollTop > 2);
+    setShowBottomFade(el.scrollTop + el.clientHeight < el.scrollHeight - 2);
+  };
 
   const loadFeedbacks = async () => {
     setIsLoadingList(true);
@@ -30,6 +41,29 @@ const FeedbackModal = ({ onClose }: FeedbackModalProps) => {
   useEffect(() => {
     loadFeedbacks();
   }, []);
+
+  useEffect(() => {
+    if (!isLoadingList) {
+      listEndRef.current?.scrollIntoView({ block: "end" });
+    }
+  }, [isLoadingList, feedbacks.length]);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(updateFade);
+    ro.observe(el);
+    el.addEventListener("scroll", updateFade);
+    return () => {
+      ro.disconnect();
+      el.removeEventListener("scroll", updateFade);
+    };
+  }, []);
+
+  // 목록 변경(스크롤 이동, 항목 추가/삭제) 시마다 재계산
+  useEffect(() => {
+    updateFade();
+  });
 
   const handleDelete = async (id: number) => {
     if (!confirm("등록한 의견을 삭제하시겠습니까?")) return;
@@ -100,52 +134,71 @@ const FeedbackModal = ({ onClose }: FeedbackModalProps) => {
         </div>
 
         {/* 다른 사용자들이 남긴 의견 (작성자 이름 표시) */}
-        <div className="flex-1 min-h-0 overflow-y-auto px-6 my-4 space-y-5">
-          {isLoadingList ? (
-            <p className="text-base text-gray-400 text-center py-4">
-              불러오는 중...
-            </p>
-          ) : feedbacks.length > 0 ? (
-            feedbacks.map((feedback) => (
-              <div key={feedback.id} className="flex items-center gap-3">
-                <img
-                  src="/brightness.svg"
-                  alt="프로필"
-                  className="w-9 h-9 rounded-full bg-gray-100 dark:bg-gray-700 p-1.5 shrink-0"
-                />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs text-gray-400">
-                    {feedback.user_name ?? "알 수 없음"} · {feedback.created_at}
-                  </p>
-                  <p className="text-base text-gray-800 dark:text-gray-100 whitespace-pre-wrap break-words">
-                    {feedback.content}
-                  </p>
-                </div>
-                <button
-                  onClick={() => handleToggleLike(feedback.id)}
-                  className={`shrink-0 flex items-center gap-1 text-base px-2 py-1 rounded transition ${
-                    feedback.liked_by_me
-                      ? "text-red-500"
-                      : "text-gray-400 hover:text-red-400"
-                  }`}
-                >
-                  {feedback.liked_by_me ? "❤️" : "🤍"} {feedback.like_count}
-                </button>
-                {feedback.is_mine ? (
+        <div className="relative flex-1 min-h-0 my-4">
+          <div
+            ref={scrollRef}
+            className="h-full overflow-y-auto scrollbar-hide px-6 space-y-5"
+          >
+            {isLoadingList ? (
+              <p className="text-base text-gray-400 text-center py-4">
+                불러오는 중...
+              </p>
+            ) : feedbacks.length > 0 ? (
+              feedbacks.map((feedback) => (
+                <div key={feedback.id} className="flex items-center gap-3">
+                  <img
+                    src="/brightness.svg"
+                    alt="프로필"
+                    className="w-9 h-9 rounded-full bg-gray-100 dark:bg-gray-700 p-1.5 shrink-0"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-gray-400">
+                      {feedback.user_name ?? "알 수 없음"} ·{" "}
+                      {feedback.created_at}
+                    </p>
+                    <p className="text-base text-gray-800 dark:text-gray-100 whitespace-pre-wrap break-words">
+                      {feedback.content}
+                    </p>
+                  </div>
                   <button
-                    onClick={() => handleDelete(feedback.id)}
-                    className="shrink-0 text-sm text-gray-400 hover:text-red-500 px-1"
+                    onClick={() => handleToggleLike(feedback.id)}
+                    className={`shrink-0 flex items-center gap-1 text-base px-2 py-1 rounded transition ${
+                      feedback.liked_by_me
+                        ? "text-red-500"
+                        : "text-gray-400 hover:text-red-400"
+                    }`}
                   >
-                    삭제
+                    {feedback.liked_by_me ? "❤️" : "🤍"} {feedback.like_count}
                   </button>
-                ) : null}
-              </div>
-            ))
-          ) : (
-            <p className="text-base text-gray-400 text-center py-4">
-              아직 등록된 의견이 없습니다.
-            </p>
-          )}
+                  {feedback.is_mine ? (
+                    <button
+                      onClick={() => handleDelete(feedback.id)}
+                      className="shrink-0 text-sm text-gray-400 hover:text-red-500 px-1"
+                    >
+                      삭제
+                    </button>
+                  ) : null}
+                </div>
+              ))
+            ) : (
+              <p className="text-base text-gray-400 text-center py-4">
+                아직 등록된 의견이 없습니다.
+              </p>
+            )}
+            <div ref={listEndRef} />
+          </div>
+          <div
+            className={`pointer-events-none absolute top-0 left-0 right-0 h-10
+              bg-gradient-to-b from-white dark:from-gray-800 to-transparent
+              transition-opacity duration-300
+              ${showTopFade ? "opacity-100" : "opacity-0"}`}
+          />
+          <div
+            className={`pointer-events-none absolute bottom-0 left-0 right-0 h-10
+              bg-gradient-to-t from-white dark:from-gray-800 to-transparent
+              transition-opacity duration-300
+              ${showBottomFade ? "opacity-100" : "opacity-0"}`}
+          />
         </div>
 
         <form
