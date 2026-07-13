@@ -152,9 +152,11 @@ const FeedbackModal = ({ onClose }: FeedbackModalProps) => {
                     className="w-9 h-9 rounded-full bg-gray-100 dark:bg-gray-700 p-1.5 shrink-0"
                   />
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs text-gray-400">
-                      {feedback.user_name ?? "알 수 없음"} ·{" "}
-                      {feedback.created_at}
+                    <p className="text-gray-400">
+                      <span className="text-base">
+                        {feedback.user_name ?? "알 수 없음"}
+                      </span>{" "}
+                      <span className="text-sm">· {feedback.created_at}</span>
                     </p>
                     <p className="text-base text-gray-800 dark:text-gray-100 whitespace-pre-wrap break-words">
                       {feedback.content}
