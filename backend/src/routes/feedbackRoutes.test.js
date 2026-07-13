@@ -107,16 +107,25 @@ describe("기능개선 의견 관리 화면 접근 권한 (총괄담당 이상)"
     expect(response.status).toBe(403);
   });
 
-  it("본인이 작성한 의견은 삭제할 수 있다", async () => {
+  it("본인이 작성한 의견은 삭제할 수 있다 (숨김 처리, 관리자 이력에는 남음)", async () => {
     const response = await request(app)
       .delete(`/api/feedback/${feedbackId}`)
       .set("Authorization", `Bearer ${educatorToken}`);
 
     expect(response.status).toBe(200);
 
-    const list = await request(app)
+    const publicList = await request(app)
+      .get("/api/feedback/public")
+      .set("Authorization", `Bearer ${educatorToken}`);
+    expect(
+      publicList.body.find((f) => f.id === feedbackId),
+    ).toBeUndefined();
+
+    const adminList = await request(app)
       .get("/api/feedback")
       .set("Authorization", `Bearer ${seniorManagerToken}`);
-    expect(list.body.find((f) => f.id === feedbackId)).toBeUndefined();
+    const deletedFeedback = adminList.body.find((f) => f.id === feedbackId);
+    expect(deletedFeedback).toBeDefined();
+    expect(deletedFeedback.deleted).toBe(1);
   });
 });

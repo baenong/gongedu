@@ -64,6 +64,7 @@ export interface Feedback {
   department: string | null;
   content: string;
   checked: number;
+  deleted: number;
   created_at: string;
 }
 

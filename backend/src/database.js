@@ -103,6 +103,7 @@ export function initDatabase() {
       department TEXT,
       content TEXT NOT NULL,
       checked INTEGER DEFAULT 0,
+      deleted INTEGER DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE SET NULL
     )
@@ -208,6 +209,10 @@ function migrateDatabase() {
   const hasChecked = feedbackColumns.some((col) => col.name === "checked");
   if (!hasChecked) {
     db.exec("ALTER TABLE feedbacks ADD COLUMN checked INTEGER DEFAULT 0");
+  }
+  const hasDeleted = feedbackColumns.some((col) => col.name === "deleted");
+  if (!hasDeleted) {
+    db.exec("ALTER TABLE feedbacks ADD COLUMN deleted INTEGER DEFAULT 0");
   }
 
   // enrollments(user_id, course_id) UNIQUE 보장.

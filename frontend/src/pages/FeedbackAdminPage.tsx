@@ -64,13 +64,14 @@ const FeedbackAdminPage = () => {
               <TableHeader>제출일</TableHeader>
               <TableHeader>제출자</TableHeader>
               <TableHeader>부서</TableHeader>
+              <TableHeader>상태</TableHeader>
               <TableHeader className="text-left">내용</TableHeader>
             </tr>
           </thead>
           <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
             {isLoading ? (
               <tr>
-                <TableRow colSpan={5}>불러오는 중...</TableRow>
+                <TableRow colSpan={6}>불러오는 중...</TableRow>
               </tr>
             ) : visibleFeedbacks.length > 0 ? (
               visibleFeedbacks.map((feedback) => (
@@ -93,6 +94,13 @@ const FeedbackAdminPage = () => {
                   <TableRow className="whitespace-nowrap">
                     {feedback.department ?? "-"}
                   </TableRow>
+                  <TableRow className="whitespace-nowrap">
+                    {feedback.deleted === 1 ? (
+                      <span className="text-red-500">삭제됨</span>
+                    ) : (
+                      "-"
+                    )}
+                  </TableRow>
                   <TableRow className="text-left whitespace-pre-wrap">
                     {feedback.content}
                   </TableRow>
@@ -100,7 +108,7 @@ const FeedbackAdminPage = () => {
               ))
             ) : (
               <tr>
-                <TableRow colSpan={5}>등록된 의견이 없습니다.</TableRow>
+                <TableRow colSpan={6}>등록된 의견이 없습니다.</TableRow>
               </tr>
             )}
           </tbody>

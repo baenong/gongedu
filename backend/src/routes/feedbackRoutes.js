@@ -51,6 +51,7 @@ router.get("/public", authenticateToken, (req, res) => {
           ) as liked_by_me,
           (f.user_id = ?) as is_mine
         FROM feedbacks f
+        WHERE f.deleted = 0
         ORDER BY f.created_at DESC
         `,
       )
@@ -98,7 +99,7 @@ router.post("/:id/like", authenticateToken, (req, res) => {
   }
 });
 
-// 본인이 작성한 의견 삭제
+// 본인이 작성한 의견 삭제 (실제로는 숨김 처리 — 관리자 이력에는 계속 남음)
 // DELETE /api/feedback/:id
 router.delete("/:id", authenticateToken, (req, res) => {
   const { id } = req.params;
@@ -115,7 +116,7 @@ router.delete("/:id", authenticateToken, (req, res) => {
       return res.status(403).json({ message: "본인이 작성한 의견만 삭제할 수 있습니다." });
     }
 
-    db.prepare("DELETE FROM feedbacks WHERE id = ?").run(id);
+    db.prepare("UPDATE feedbacks SET deleted = 1 WHERE id = ?").run(id);
 
     res.json({ message: "의견이 삭제되었습니다." });
   } catch (error) {
