@@ -13,8 +13,10 @@ const IpAccessSettings = () => {
     (async () => {
       try {
         const response = await api.get("/settings");
-        // DB에 없는 키가 있을 수 있으므로 기본값 병합
-        setSettings((prev) => ({ ...prev, ...response.data }));
+        setSettings((prev) => ({
+          ...prev,
+          ipWhitelist: response.data.allowed_ip_range ?? prev.ipWhitelist,
+        }));
       } catch (error) {
         toast.error(
           getErrorMessage(error, "설정 로드에 실패했습니다. 서버를 확인하세요"),

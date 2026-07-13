@@ -6,6 +6,7 @@
 
 <p align="center">
   <img src="./.github/assets/logo-white.svg" width="225">
+  <br><u><strong>#k-ai-champion</strong></u>
   <br><i>"공직자 1시간은, 5200만 시간 가치"</i>
   <br>
   <br><strong>공무원 필수교육, 이제 한 곳에서 관리합니다.</strong>
