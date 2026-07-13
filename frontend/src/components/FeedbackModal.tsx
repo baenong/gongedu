@@ -31,6 +31,16 @@ const FeedbackModal = ({ onClose }: FeedbackModalProps) => {
     loadFeedbacks();
   }, []);
 
+  const handleDelete = async (id: number) => {
+    if (!confirm("등록한 의견을 삭제하시겠습니까?")) return;
+    try {
+      await api.delete(`/feedback/${id}`);
+      setFeedbacks((prev) => prev.filter((f) => f.id !== id));
+    } catch (error) {
+      toast.error(getErrorMessage(error, "의견 삭제에 실패했습니다."));
+    }
+  };
+
   const handleToggleLike = async (id: number) => {
     try {
       const response = await api.post(`/feedback/${id}/like`);
@@ -121,6 +131,14 @@ const FeedbackModal = ({ onClose }: FeedbackModalProps) => {
                 >
                   {feedback.liked_by_me ? "❤️" : "🤍"} {feedback.like_count}
                 </button>
+                {feedback.is_mine ? (
+                  <button
+                    onClick={() => handleDelete(feedback.id)}
+                    className="shrink-0 text-sm text-gray-400 hover:text-red-500 px-1"
+                  >
+                    삭제
+                  </button>
+                ) : null}
               </div>
             ))
           ) : (

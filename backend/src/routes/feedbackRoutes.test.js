@@ -83,4 +83,40 @@ describe("기능개선 의견 관리 화면 접근 권한 (총괄담당 이상)"
       expect(feedback).not.toHaveProperty("department");
     }
   });
+
+  it("공개 목록(/public)은 본인이 작성한 의견에 is_mine=true를 표시한다", async () => {
+    const response = await request(app)
+      .get("/api/feedback/public")
+      .set("Authorization", `Bearer ${educatorToken}`);
+
+    const mine = response.body.find((f) => f.id === feedbackId);
+    expect(mine.is_mine).toBeTruthy();
+
+    const seniorView = await request(app)
+      .get("/api/feedback/public")
+      .set("Authorization", `Bearer ${seniorManagerToken}`);
+    const notMine = seniorView.body.find((f) => f.id === feedbackId);
+    expect(notMine.is_mine).toBeFalsy();
+  });
+
+  it("다른 사람이 작성한 의견은 삭제할 수 없다", async () => {
+    const response = await request(app)
+      .delete(`/api/feedback/${feedbackId}`)
+      .set("Authorization", `Bearer ${seniorManagerToken}`);
+
+    expect(response.status).toBe(403);
+  });
+
+  it("본인이 작성한 의견은 삭제할 수 있다", async () => {
+    const response = await request(app)
+      .delete(`/api/feedback/${feedbackId}`)
+      .set("Authorization", `Bearer ${educatorToken}`);
+
+    expect(response.status).toBe(200);
+
+    const list = await request(app)
+      .get("/api/feedback")
+      .set("Authorization", `Bearer ${seniorManagerToken}`);
+    expect(list.body.find((f) => f.id === feedbackId)).toBeUndefined();
+  });
 });

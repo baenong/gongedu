@@ -75,4 +75,5 @@ export interface PublicFeedback {
   created_at: string;
   like_count: number;
   liked_by_me: number;
+  is_mine: number;
 }

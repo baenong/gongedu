@@ -48,12 +48,13 @@ router.get("/public", authenticateToken, (req, res) => {
           (SELECT COUNT(*) FROM feedback_likes WHERE feedback_id = f.id) as like_count,
           EXISTS(
             SELECT 1 FROM feedback_likes WHERE feedback_id = f.id AND user_id = ?
-          ) as liked_by_me
+          ) as liked_by_me,
+          (f.user_id = ?) as is_mine
         FROM feedbacks f
         ORDER BY f.created_at DESC
         `,
       )
-      .all(req.user.id);
+      .all(req.user.id, req.user.id);
     res.json(feedbacks);
   } catch (error) {
     console.error(error);
@@ -91,6 +92,32 @@ router.post("/:id/like", authenticateToken, (req, res) => {
       .get(id);
 
     res.json({ liked: !existing, like_count: count });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "서버 오류가 발생했습니다." });
+  }
+});
+
+// 본인이 작성한 의견 삭제
+// DELETE /api/feedback/:id
+router.delete("/:id", authenticateToken, (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const feedback = db
+      .prepare("SELECT id, user_id FROM feedbacks WHERE id = ?")
+      .get(id);
+
+    if (!feedback) {
+      return res.status(404).json({ message: "의견을 찾을 수 없습니다." });
+    }
+    if (feedback.user_id !== req.user.id) {
+      return res.status(403).json({ message: "본인이 작성한 의견만 삭제할 수 있습니다." });
+    }
+
+    db.prepare("DELETE FROM feedbacks WHERE id = ?").run(id);
+
+    res.json({ message: "의견이 삭제되었습니다." });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "서버 오류가 발생했습니다." });
