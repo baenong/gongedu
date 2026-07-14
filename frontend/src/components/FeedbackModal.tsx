@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import api from "../api/axios";
 import toast from "react-hot-toast";
 import FormButton from "./FormButton";
+import ScrollableTextarea from "./ScrollableTextarea";
 import { getErrorMessage } from "../utils/errorUtils";
 import type { PublicFeedback } from "../types";
 
@@ -145,40 +146,56 @@ const FeedbackModal = ({ onClose }: FeedbackModalProps) => {
               </p>
             ) : feedbacks.length > 0 ? (
               feedbacks.map((feedback) => (
-                <div key={feedback.id} className="flex items-center gap-3">
-                  <img
-                    src="/brightness.svg"
-                    alt="프로필"
-                    className="w-9 h-9 rounded-full bg-gray-100 dark:bg-gray-700 p-1.5 shrink-0"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-gray-400">
-                      <span className="text-base">
-                        {feedback.user_name ?? "알 수 없음"}
-                      </span>{" "}
-                      <span className="text-sm">· {feedback.created_at}</span>
-                    </p>
-                    <p className="text-base text-gray-800 dark:text-gray-100 whitespace-pre-wrap break-words">
-                      {feedback.content}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => handleToggleLike(feedback.id)}
-                    className={`shrink-0 flex items-center gap-1 text-base px-2 py-1 rounded transition ${
-                      feedback.liked_by_me
-                        ? "text-red-500"
-                        : "text-gray-400 hover:text-red-400"
-                    }`}
-                  >
-                    {feedback.liked_by_me ? "❤️" : "🤍"} {feedback.like_count}
-                  </button>
-                  {feedback.is_mine ? (
+                <div key={feedback.id} className="space-y-2">
+                  <div className="flex items-center gap-3">
+                    <img
+                      src="/brightness.svg"
+                      alt="프로필"
+                      className="w-9 h-9 rounded-full bg-gray-100 dark:bg-gray-700 p-1.5 shrink-0"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-gray-400">
+                        <span className="text-base">
+                          {feedback.user_name ?? "알 수 없음"}
+                        </span>{" "}
+                        <span className="text-sm">
+                          · {feedback.created_at}
+                        </span>
+                      </p>
+                      <p className="text-base text-gray-800 dark:text-gray-100 whitespace-pre-wrap wrap-break-word">
+                        {feedback.content}
+                      </p>
+                    </div>
                     <button
-                      onClick={() => handleDelete(feedback.id)}
-                      className="shrink-0 text-sm text-gray-400 hover:text-red-500 px-1"
+                      onClick={() => handleToggleLike(feedback.id)}
+                      className={`shrink-0 flex items-center gap-1 text-base px-2 py-1 rounded transition ${
+                        feedback.liked_by_me
+                          ? "text-red-500"
+                          : "text-gray-400 hover:text-red-400"
+                      }`}
                     >
-                      삭제
+                      {feedback.liked_by_me ? "❤️" : "🤍"}{" "}
+                      {feedback.like_count}
                     </button>
+                    {feedback.is_mine ? (
+                      <button
+                        onClick={() => handleDelete(feedback.id)}
+                        className="shrink-0 text-sm text-gray-400 hover:text-red-500 px-1"
+                      >
+                        삭제
+                      </button>
+                    ) : null}
+                  </div>
+                  {feedback.reply_content ? (
+                    <div className="ml-12 pl-3 border-l-2 border-indigo-200 dark:border-indigo-800">
+                      <p className="text-sm text-indigo-500 dark:text-indigo-400">
+                        📢 {feedback.reply_by_name ?? "관리자"} ·{" "}
+                        {feedback.replied_at}
+                      </p>
+                      <p className="text-base text-gray-700 dark:text-gray-200 whitespace-pre-wrap wrap-break-word">
+                        {feedback.reply_content}
+                      </p>
+                    </div>
                   ) : null}
                 </div>
               ))
@@ -191,13 +208,13 @@ const FeedbackModal = ({ onClose }: FeedbackModalProps) => {
           </div>
           <div
             className={`pointer-events-none absolute top-0 left-0 right-0 h-10
-              bg-gradient-to-b from-white dark:from-gray-800 to-transparent
+              bg-linear-to-b from-white dark:from-gray-800 to-transparent
               transition-opacity duration-300
               ${showTopFade ? "opacity-100" : "opacity-0"}`}
           />
           <div
             className={`pointer-events-none absolute bottom-0 left-0 right-0 h-10
-              bg-gradient-to-t from-white dark:from-gray-800 to-transparent
+              bg-linear-to-t from-white dark:from-gray-800 to-transparent
               transition-opacity duration-300
               ${showBottomFade ? "opacity-100" : "opacity-0"}`}
           />
@@ -207,7 +224,7 @@ const FeedbackModal = ({ onClose }: FeedbackModalProps) => {
           onSubmit={handleSubmit}
           className="p-6 pt-4 space-y-4 shrink-0 border-t border-gray-200 dark:border-gray-700 mt-3"
         >
-          <textarea
+          <ScrollableTextarea
             rows={3}
             value={content}
             onChange={(e) => setContent(e.target.value)}

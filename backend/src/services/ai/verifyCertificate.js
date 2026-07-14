@@ -36,6 +36,7 @@ export async function verifyCertificate({
   courseName,
   submitterName,
   courseYear,
+  exampleTitles,
 }) {
   const providerName = getAiProvider();
   const provider = PROVIDERS[providerName];
@@ -51,6 +52,7 @@ export async function verifyCertificate({
       courseName,
       submitterName,
       courseYear,
+      exampleTitles,
     });
   } catch (error) {
     console.error("AI 수료증 검증 실패:", error);

@@ -8,7 +8,7 @@ interface TableHeaderProps
 
 const TableHeader = ({ children, className, ...props }: TableHeaderProps) => {
   const baseStyle =
-    "px-6 py-3 text-center text-base font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider";
+    "px-4 py-3 text-center text-base font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider";
 
   return (
     <th {...props} className={twMerge(baseStyle, className)}>

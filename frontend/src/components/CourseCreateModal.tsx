@@ -1,5 +1,6 @@
 import FormButton from "./FormButton";
 import FormLabel from "./FormLabel";
+import ScrollableTextarea from "./ScrollableTextarea";
 import Select from "./Select";
 import TextInput from "./TextInput";
 import { useAuthStore } from "../store/authStore";
@@ -10,6 +11,7 @@ export interface NewCourseForm {
   name: string;
   end_date: string;
   detail: string;
+  example_titles: string;
   department_id: number;
 }
 
@@ -83,9 +85,10 @@ const CourseCreateModal = ({
               />
             )}
           </div>
+          <hr className="border-gray-200 dark:border-gray-600" />
           <div>
             <FormLabel>상세정보 (선택)</FormLabel>
-            <textarea
+            <ScrollableTextarea
               rows={4}
               value={newCourse.detail}
               onChange={(e) =>
@@ -93,6 +96,20 @@ const CourseCreateModal = ({
               }
               className="w-full border rounded px-3 py-2 resize-none dark:bg-gray-700 dark:text-white dark:border-gray-600"
               placeholder="내용을 입력하지 않아도 등록 가능합니다."
+            />
+          </div>
+          <div>
+            <FormLabel>예시 교육명 (선택)</FormLabel>
+            <ScrollableTextarea
+              rows={4}
+              value={newCourse.example_titles}
+              onChange={(e) =>
+                onChange({ ...newCourse, example_titles: e.target.value })
+              }
+              className="w-full border rounded px-3 py-2 resize-none dark:bg-gray-700 dark:text-white dark:border-gray-600"
+              placeholder={
+                "AI 검증 시 이 과정과 관련 있다고 인정할 교육명을 한 줄에 하나씩 입력하세요.\n예) 노인인권교육\n세계인권선언 바로알기"
+              }
             />
           </div>
           <div className="flex justify-end gap-2 mt-6">

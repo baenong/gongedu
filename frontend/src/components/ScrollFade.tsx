@@ -40,7 +40,7 @@ const ScrollFade = ({ className = "", children }: ScrollFadeProps) => {
       <div
         className={`pointer-events-none absolute bottom-0 left-0 right-0 h-16
           flex flex-col justify-end
-          bg-gradient-to-t from-white dark:from-gray-800 to-transparent
+          bg-linear-to-t from-white dark:from-gray-800 to-transparent
           transition-opacity duration-300
           ${showFade ? "opacity-100" : "opacity-0"}`}
       >

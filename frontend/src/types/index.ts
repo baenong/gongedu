@@ -23,6 +23,7 @@ export interface Course {
   name: string;
   end_date: string;
   detail: string;
+  example_titles?: string | null;
   created_by?: number;
   department_id?: number;
   department?: string;
@@ -65,6 +66,9 @@ export interface Feedback {
   content: string;
   checked: number;
   deleted: number;
+  reply_content: string | null;
+  reply_by_name: string | null;
+  replied_at: string | null;
   created_at: string;
 }
 
@@ -77,4 +81,7 @@ export interface PublicFeedback {
   like_count: number;
   liked_by_me: number;
   is_mine: number;
+  reply_content: string | null;
+  reply_by_name: string | null;
+  replied_at: string | null;
 }

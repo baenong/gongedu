@@ -18,6 +18,7 @@ export async function verifyCertificateWithOpenAI({
   courseName,
   submitterName,
   courseYear,
+  exampleTitles,
 }) {
   const apiKey = getSetting("ai_openai_api_key") || process.env.OPENAI_API_KEY;
   if (!apiKey) {
@@ -48,7 +49,12 @@ export async function verifyCertificateWithOpenAI({
         content: [
           {
             type: "text",
-            text: buildVerificationInstruction({ courseName, submitterName, courseYear }),
+            text: buildVerificationInstruction({
+              courseName,
+              submitterName,
+              courseYear,
+              exampleTitles,
+            }),
           },
           {
             type: "image_url",
