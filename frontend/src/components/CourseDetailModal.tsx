@@ -430,7 +430,8 @@ const CourseDetailModal = ({
                             <div className="flex items-center justify-center gap-1.5">
                               {status.state === 2 && status.enrollment_id ? (
                                 <>
-                                  {status.ai_verified === false &&
+                                  {(status.ai_verified === false ||
+                                    status.ai_flagged === 1) &&
                                     canReverify && (
                                       <button
                                         onClick={() =>
