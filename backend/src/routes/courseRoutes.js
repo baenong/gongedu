@@ -88,7 +88,7 @@ router.get("/", authenticateToken, (req, res) => {
 // (관리자용) 교육 과정 등록
 // POST /api/courses
 router.post("/", authenticateToken, requireAdmin, (req, res) => {
-  const { year, name, end_date, detail } = req.body;
+  const { year, name, end_date, detail, example_titles } = req.body;
 
   // 교육담당은 본인 부서로 강제 지정, 총괄담당 이상은 요청 값을 그대로 사용
   const department_id =
@@ -108,14 +108,15 @@ router.post("/", authenticateToken, requireAdmin, (req, res) => {
 
   try {
     const stmt = db.prepare(`
-      INSERT INTO courses (year, name, end_date, detail, created_by, department_id)
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT INTO courses (year, name, end_date, detail, example_titles, created_by, department_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
     `);
     const result = stmt.run(
       year,
       name,
       end_date,
       detail,
+      example_titles || null,
       req.user.id,
       department_id,
     );
@@ -179,7 +180,7 @@ router.delete("/:id", authenticateToken, requireAdmin, (req, res) => {
 // PUT /api/courses/:id
 router.put("/:id", authenticateToken, requireAdmin, (req, res) => {
   const { id } = req.params;
-  const { end_date, detail } = req.body;
+  const { end_date, detail, example_titles } = req.body;
 
   try {
     const course = db.prepare("SELECT * FROM courses WHERE id = ?").get(id);
@@ -216,9 +217,9 @@ router.put("/:id", authenticateToken, requireAdmin, (req, res) => {
     }
 
     const stmt = db.prepare(
-      "UPDATE courses SET end_date = ?, detail = ?, department_id = ? WHERE id = ?",
+      "UPDATE courses SET end_date = ?, detail = ?, example_titles = ?, department_id = ? WHERE id = ?",
     );
-    stmt.run(end_date, detail, department_id, id);
+    stmt.run(end_date, detail, example_titles || null, department_id, id);
 
     res.json({ message: "교육과정 정보가 수정되었습니다." });
   } catch (error) {

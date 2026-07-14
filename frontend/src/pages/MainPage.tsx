@@ -65,6 +65,7 @@ const MainPage = () => {
     name: "",
     end_date: "",
     detail: "",
+    example_titles: "",
     department_id: 0,
   });
 
@@ -197,7 +198,13 @@ const MainPage = () => {
       await api.post("/courses", { ...newCourse, year });
       toast.success("교육과정이 등록되었습니다.");
       setShowCreateModal(false);
-      setNewCourse({ name: "", end_date: "", detail: "", department_id: 0 });
+      setNewCourse({
+        name: "",
+        end_date: "",
+        detail: "",
+        example_titles: "",
+        department_id: 0,
+      });
       fetchData();
     } catch (error) {
       toast.error(getErrorMessage(error, "등록 중 오류가 발생했습니다."));
@@ -439,6 +446,7 @@ const MainPage = () => {
         name: selectedCourse.name,
         end_date: selectedCourse.end_date,
         detail: selectedCourse.detail,
+        example_titles: selectedCourse.example_titles,
         department_id: selectedCourse.department_id,
       });
       toast.success("정보가 수정되었습니다.");
@@ -574,6 +582,7 @@ const MainPage = () => {
                 name: "",
                 end_date: "",
                 detail: "",
+                example_titles: "",
                 department_id:
                   user?.role === roles["교육담당"]
                     ? (user?.departmentId ?? 0)

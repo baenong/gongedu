@@ -12,6 +12,7 @@ export async function verifyCertificateWithClaude({
   courseName,
   submitterName,
   courseYear,
+  exampleTitles,
 }) {
   const apiKey =
     getSetting("ai_anthropic_api_key") || process.env.ANTHROPIC_API_KEY;
@@ -48,7 +49,12 @@ export async function verifyCertificateWithClaude({
           },
           {
             type: "text",
-            text: buildVerificationInstruction({ courseName, submitterName, courseYear }),
+            text: buildVerificationInstruction({
+              courseName,
+              submitterName,
+              courseYear,
+              exampleTitles,
+            }),
           },
         ],
       },

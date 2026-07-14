@@ -49,6 +49,7 @@ export function initDatabase() {
       name TEXT NOT NULL,
       end_date TEXT NOT NULL,
       detail TEXT,
+      example_titles TEXT,
       created_by INTEGER,
       department_id INTEGER DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -187,6 +188,12 @@ function migrateDatabase() {
     db.exec(
       "ALTER TABLE courses ADD COLUMN department_id INTEGER DEFAULT 0",
     );
+  }
+  const hasExampleTitles = courseColumns.some(
+    (col) => col.name === "example_titles",
+  );
+  if (!hasExampleTitles) {
+    db.exec("ALTER TABLE courses ADD COLUMN example_titles TEXT");
   }
 
   const enrollmentColumns = db.prepare("PRAGMA table_info(enrollments)").all();

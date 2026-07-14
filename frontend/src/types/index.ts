@@ -23,6 +23,7 @@ export interface Course {
   name: string;
   end_date: string;
   detail: string;
+  example_titles?: string | null;
   created_by?: number;
   department_id?: number;
   department?: string;

@@ -27,6 +27,7 @@ import {
   isAiConfigured,
   isAiFlagged,
 } from "../services/ai/verifyCertificate.js";
+import { parseExampleTitles } from "../services/ai/certificateSchema.js";
 
 const router = express.Router();
 const __filename = fileURLToPath(import.meta.url);
@@ -53,6 +54,7 @@ async function runBackgroundAiVerification({
   courseName,
   submitterName,
   courseYear,
+  exampleTitles,
 }) {
   try {
     const aiResult = await verifyCertificate({
@@ -61,6 +63,7 @@ async function runBackgroundAiVerification({
       courseName,
       submitterName,
       courseYear,
+      exampleTitles,
     });
     const aiVerification = aiResult ? JSON.stringify(aiResult) : null;
     const aiFlagged = isAiFlagged(aiResult) ? 1 : 0;
@@ -285,7 +288,7 @@ router.post(
 
     try {
       const course = db
-        .prepare("SELECT name, year FROM courses WHERE id = ?")
+        .prepare("SELECT name, year, example_titles FROM courses WHERE id = ?")
         .get(courseId);
       if (!course) throw new Error("교육과정을 찾을 수 없습니다.");
 
@@ -365,6 +368,7 @@ router.post(
           courseName: course.name,
           submitterName: targetUser.name,
           courseYear: course.year,
+          exampleTitles: parseExampleTitles(course.example_titles),
         }).catch((error) => {
           console.error(`백그라운드 AI 검증 처리 실패 (enrollment ${enrollmentId}):`, error);
         });
@@ -906,7 +910,7 @@ router.post("/:enrollmentId/reverify", authenticateToken, async (req, res) => {
     }
 
     const course = db
-      .prepare("SELECT name, year FROM courses WHERE id = ?")
+      .prepare("SELECT name, year, example_titles FROM courses WHERE id = ?")
       .get(enrollment.course_id);
     const owner = db
       .prepare("SELECT name FROM users WHERE id = ?")
@@ -919,6 +923,7 @@ router.post("/:enrollmentId/reverify", authenticateToken, async (req, res) => {
       courseName: course?.name ?? "",
       submitterName: owner?.name ?? "",
       courseYear: course?.year ?? new Date().getFullYear(),
+      exampleTitles: parseExampleTitles(course?.example_titles),
     });
 
     const aiVerification = aiResult ? JSON.stringify(aiResult) : null;

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import api from "../api/axios";
 import toast from "react-hot-toast";
 import FormButton from "./FormButton";
+import ScrollableTextarea from "./ScrollableTextarea";
 import { getErrorMessage } from "../utils/errorUtils";
 import type { PublicFeedback } from "../types";
 
@@ -207,7 +208,7 @@ const FeedbackModal = ({ onClose }: FeedbackModalProps) => {
           onSubmit={handleSubmit}
           className="p-6 pt-4 space-y-4 shrink-0 border-t border-gray-200 dark:border-gray-700 mt-3"
         >
-          <textarea
+          <ScrollableTextarea
             rows={3}
             value={content}
             onChange={(e) => setContent(e.target.value)}
