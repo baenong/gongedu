@@ -46,6 +46,7 @@ router.get("/public", authenticateToken, (req, res) => {
       .prepare(
         `
         SELECT f.id, f.user_name, f.content, f.created_at,
+          f.reply_content, f.reply_by_name, f.replied_at,
           (SELECT COUNT(*) FROM feedback_likes WHERE feedback_id = f.id) as like_count,
           EXISTS(
             SELECT 1 FROM feedback_likes WHERE feedback_id = f.id AND user_id = ?
@@ -187,6 +188,41 @@ router.patch(
       }
 
       res.json({ message: "확인 상태가 변경되었습니다." });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: "서버 오류가 발생했습니다." });
+    }
+  },
+);
+
+// (총괄담당 이상용) 의견에 답장 작성/수정/삭제 — reply를 빈 문자열로 보내면 답장 삭제
+// PATCH /api/feedback/:id/reply
+router.patch(
+  "/:id/reply",
+  authenticateToken,
+  requireSeniorManager,
+  (req, res) => {
+    const { id } = req.params;
+    const { reply } = req.body;
+    const trimmedReply = typeof reply === "string" ? reply.trim() : "";
+
+    try {
+      const result = db
+        .prepare(
+          "UPDATE feedbacks SET reply_content = ?, reply_by_name = ?, replied_at = ? WHERE id = ?",
+        )
+        .run(
+          trimmedReply || null,
+          trimmedReply ? req.user.name : null,
+          trimmedReply ? getCurrentKST() : null,
+          id,
+        );
+
+      if (result.changes === 0) {
+        return res.status(404).json({ message: "의견을 찾을 수 없습니다." });
+      }
+
+      res.json({ message: "답장이 저장되었습니다." });
     } catch (error) {
       console.error(error);
       res.status(500).json({ message: "서버 오류가 발생했습니다." });

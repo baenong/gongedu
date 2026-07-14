@@ -105,6 +105,9 @@ export function initDatabase() {
       content TEXT NOT NULL,
       checked INTEGER DEFAULT 0,
       deleted INTEGER DEFAULT 0,
+      reply_content TEXT,
+      reply_by_name TEXT,
+      replied_at DATETIME,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE SET NULL
     )
@@ -220,6 +223,14 @@ function migrateDatabase() {
   const hasDeleted = feedbackColumns.some((col) => col.name === "deleted");
   if (!hasDeleted) {
     db.exec("ALTER TABLE feedbacks ADD COLUMN deleted INTEGER DEFAULT 0");
+  }
+  const hasReplyContent = feedbackColumns.some(
+    (col) => col.name === "reply_content",
+  );
+  if (!hasReplyContent) {
+    db.exec("ALTER TABLE feedbacks ADD COLUMN reply_content TEXT");
+    db.exec("ALTER TABLE feedbacks ADD COLUMN reply_by_name TEXT");
+    db.exec("ALTER TABLE feedbacks ADD COLUMN replied_at DATETIME");
   }
 
   // enrollments(user_id, course_id) UNIQUE 보장.

@@ -312,28 +312,28 @@ const CourseDetailModal = ({
               <table className="w-full table-fixed divide-y divide-gray-200 dark:divide-gray-700">
                 <thead className="bg-gray-50 dark:bg-gray-700 sticky top-0 z-10">
                   <tr>
-                    <TableHeader className="w-24 px-4 whitespace-nowrap">
+                    <TableHeader className="w-24 whitespace-nowrap">
                       이름
                     </TableHeader>
                     {isSuperAdmin && (
-                      <TableHeader className="w-32 px-4 whitespace-nowrap">
+                      <TableHeader className="w-32 whitespace-nowrap">
                         부서
                       </TableHeader>
                     )}
-                    <TableHeader className="w-32 px-4 whitespace-nowrap">
+                    <TableHeader className="w-32 whitespace-nowrap">
                       팀(계)
                     </TableHeader>
-                    <TableHeader className="w-24 px-4 whitespace-nowrap">
+                    <TableHeader className="w-24 whitespace-nowrap">
                       상태
                     </TableHeader>
-                    <TableHeader className="px-4">제출일 / 파일</TableHeader>
+                    <TableHeader>제출일 / 파일</TableHeader>
                     {isManager && (
-                      <TableHeader className="w-24 px-4 whitespace-nowrap">
+                      <TableHeader className="w-24 whitespace-nowrap">
                         AI 검증
                       </TableHeader>
                     )}
                     {isManager && (
-                      <TableHeader className="w-32 px-4 whitespace-nowrap">
+                      <TableHeader className="w-32 whitespace-nowrap">
                         관리
                       </TableHeader>
                     )}

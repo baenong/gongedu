@@ -156,6 +156,71 @@ describe("기능개선 의견 관리 화면 접근 권한 (총괄담당 이상)"
     expect(deletedFeedback.deleted).toBe(1);
   });
 
+  it("총괄담당 미만은 답장을 작성할 수 없다", async () => {
+    const uniqueContent = `답장 권한 테스트 ${Date.now()}`;
+    await request(app)
+      .post("/api/feedback")
+      .set("Authorization", `Bearer ${educatorToken}`)
+      .send({ content: uniqueContent });
+    const list = await request(app)
+      .get("/api/feedback")
+      .set("Authorization", `Bearer ${seniorManagerToken}`);
+    const targetId = list.body.find((f) => f.content === uniqueContent)?.id;
+
+    const response = await request(app)
+      .patch(`/api/feedback/${targetId}/reply`)
+      .set("Authorization", `Bearer ${educatorToken}`)
+      .send({ reply: "답장 시도" });
+
+    expect(response.status).toBe(403);
+  });
+
+  it("총괄담당은 답장을 작성할 수 있고, 공개/관리자 목록 모두에 노출된다", async () => {
+    const uniqueContent = `답장 작성 테스트 ${Date.now()}`;
+    await request(app)
+      .post("/api/feedback")
+      .set("Authorization", `Bearer ${educatorToken}`)
+      .send({ content: uniqueContent });
+    const created = await request(app)
+      .get("/api/feedback")
+      .set("Authorization", `Bearer ${seniorManagerToken}`);
+    const targetId = created.body.find((f) => f.content === uniqueContent)?.id;
+
+    const replyContent = `답장 테스트 ${Date.now()}`;
+    const response = await request(app)
+      .patch(`/api/feedback/${targetId}/reply`)
+      .set("Authorization", `Bearer ${seniorManagerToken}`)
+      .send({ reply: replyContent });
+
+    expect(response.status).toBe(200);
+
+    const publicList = await request(app)
+      .get("/api/feedback/public")
+      .set("Authorization", `Bearer ${educatorToken}`);
+    const publicFeedback = publicList.body.find((f) => f.id === targetId);
+    expect(publicFeedback.reply_content).toBe(replyContent);
+    expect(publicFeedback.reply_by_name).toBe("fb-senior-test");
+
+    const adminList = await request(app)
+      .get("/api/feedback")
+      .set("Authorization", `Bearer ${seniorManagerToken}`);
+    const adminFeedback = adminList.body.find((f) => f.id === targetId);
+    expect(adminFeedback.reply_content).toBe(replyContent);
+
+    const clearResponse = await request(app)
+      .patch(`/api/feedback/${targetId}/reply`)
+      .set("Authorization", `Bearer ${seniorManagerToken}`)
+      .send({ reply: "" });
+    expect(clearResponse.status).toBe(200);
+
+    const afterClear = await request(app)
+      .get("/api/feedback/public")
+      .set("Authorization", `Bearer ${educatorToken}`);
+    expect(
+      afterClear.body.find((f) => f.id === targetId).reply_content,
+    ).toBeNull();
+  });
+
   it("총괄담당 미만은 완전삭제(DELETE /:id/permanent)를 할 수 없다", async () => {
     const response = await request(app)
       .delete(`/api/feedback/${feedbackId}/permanent`)

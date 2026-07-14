@@ -146,40 +146,56 @@ const FeedbackModal = ({ onClose }: FeedbackModalProps) => {
               </p>
             ) : feedbacks.length > 0 ? (
               feedbacks.map((feedback) => (
-                <div key={feedback.id} className="flex items-center gap-3">
-                  <img
-                    src="/brightness.svg"
-                    alt="프로필"
-                    className="w-9 h-9 rounded-full bg-gray-100 dark:bg-gray-700 p-1.5 shrink-0"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-gray-400">
-                      <span className="text-base">
-                        {feedback.user_name ?? "알 수 없음"}
-                      </span>{" "}
-                      <span className="text-sm">· {feedback.created_at}</span>
-                    </p>
-                    <p className="text-base text-gray-800 dark:text-gray-100 whitespace-pre-wrap wrap-break-word">
-                      {feedback.content}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => handleToggleLike(feedback.id)}
-                    className={`shrink-0 flex items-center gap-1 text-base px-2 py-1 rounded transition ${
-                      feedback.liked_by_me
-                        ? "text-red-500"
-                        : "text-gray-400 hover:text-red-400"
-                    }`}
-                  >
-                    {feedback.liked_by_me ? "❤️" : "🤍"} {feedback.like_count}
-                  </button>
-                  {feedback.is_mine ? (
+                <div key={feedback.id} className="space-y-2">
+                  <div className="flex items-center gap-3">
+                    <img
+                      src="/brightness.svg"
+                      alt="프로필"
+                      className="w-9 h-9 rounded-full bg-gray-100 dark:bg-gray-700 p-1.5 shrink-0"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-gray-400">
+                        <span className="text-base">
+                          {feedback.user_name ?? "알 수 없음"}
+                        </span>{" "}
+                        <span className="text-sm">
+                          · {feedback.created_at}
+                        </span>
+                      </p>
+                      <p className="text-base text-gray-800 dark:text-gray-100 whitespace-pre-wrap wrap-break-word">
+                        {feedback.content}
+                      </p>
+                    </div>
                     <button
-                      onClick={() => handleDelete(feedback.id)}
-                      className="shrink-0 text-sm text-gray-400 hover:text-red-500 px-1"
+                      onClick={() => handleToggleLike(feedback.id)}
+                      className={`shrink-0 flex items-center gap-1 text-base px-2 py-1 rounded transition ${
+                        feedback.liked_by_me
+                          ? "text-red-500"
+                          : "text-gray-400 hover:text-red-400"
+                      }`}
                     >
-                      삭제
+                      {feedback.liked_by_me ? "❤️" : "🤍"}{" "}
+                      {feedback.like_count}
                     </button>
+                    {feedback.is_mine ? (
+                      <button
+                        onClick={() => handleDelete(feedback.id)}
+                        className="shrink-0 text-sm text-gray-400 hover:text-red-500 px-1"
+                      >
+                        삭제
+                      </button>
+                    ) : null}
+                  </div>
+                  {feedback.reply_content ? (
+                    <div className="ml-12 pl-3 border-l-2 border-indigo-200 dark:border-indigo-800">
+                      <p className="text-sm text-indigo-500 dark:text-indigo-400">
+                        📢 {feedback.reply_by_name ?? "관리자"} ·{" "}
+                        {feedback.replied_at}
+                      </p>
+                      <p className="text-base text-gray-700 dark:text-gray-200 whitespace-pre-wrap wrap-break-word">
+                        {feedback.reply_content}
+                      </p>
+                    </div>
                   ) : null}
                 </div>
               ))
