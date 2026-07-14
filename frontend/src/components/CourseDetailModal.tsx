@@ -391,7 +391,10 @@ const CourseDetailModal = ({
                               </div>
                             )
                           ) : (
-                            <span className="text-gray-400">-</span>
+                            <div className="flex flex-col text-left text-gray-400">
+                              <span>-</span>
+                              <span>📄 -</span>
+                            </div>
                           )}
                         </td>
                         {isManager && (
@@ -427,7 +430,7 @@ const CourseDetailModal = ({
                         )}
                         {isManager && (
                           <td className="px-4 py-3 text-center text-base whitespace-nowrap">
-                            <div className="flex items-center justify-center gap-1.5">
+                            <div className="flex flex-col items-center gap-1">
                               {status.state === 2 && status.enrollment_id ? (
                                 <>
                                   {(status.ai_verified === false ||
@@ -440,9 +443,9 @@ const CourseDetailModal = ({
                                             status.name,
                                           )
                                         }
-                                        className="shrink-0 text-sm bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 px-2 py-0.5 rounded transition"
+                                        className="shrink-0 text-base bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 px-3 py-1 rounded transition"
                                       >
-                                        🔄 재검증
+                                        검증
                                       </button>
                                     )}
                                   {status.user_id !== currentUserId && (
@@ -455,13 +458,14 @@ const CourseDetailModal = ({
                                       }
                                       className="shrink-0 text-base bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 px-3 py-1 rounded transition"
                                     >
-                                      ❌ 삭제
+                                      삭제
                                     </button>
                                   )}
                                 </>
                               ) : status.user_id !== currentUserId ? (
-                                <label className="inline-block cursor-pointer text-base text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300 bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 px-3 py-1 rounded transition">
-                                  📎 대신 등록
+                                <label className="inline-flex flex-col items-center cursor-pointer text-base text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300 bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 px-3 py-2.5 rounded transition">
+                                  <span>대신</span>
+                                  <span>등록</span>
                                   <input
                                     type="file"
                                     accept={CERTIFICATE_FILE_ACCEPT}
