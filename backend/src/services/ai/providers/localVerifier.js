@@ -7,6 +7,9 @@ import {
 
 const DEFAULT_BASE_URL = "http://127.0.0.1:11434";
 const DEFAULT_MODEL = "qwen2.5vl:3b";
+// CPU 추론은 정상적인 경우에도 오래 걸릴 수 있어 넉넉하게 잡되, Ollama가 멈추거나
+// 죽었을 때 요청이 무한정 걸려있지 않도록 상한을 둔다.
+const DEFAULT_TIMEOUT_MS = 5 * 60 * 1000;
 
 export function getLocalLlmBaseUrl() {
   return (
@@ -34,27 +37,41 @@ export async function verifyCertificateWithLocal({
   const image = await toImageBase64(fileBuffer, mimeType);
   if (!image) return null;
 
-  const response = await fetch(`${baseUrl}/api/chat`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model,
-      stream: false,
-      format: CERTIFICATE_VERIFICATION_SCHEMA,
-      messages: [
-        {
-          role: "user",
-          content: buildVerificationInstruction({
-            courseName,
-            submitterName,
-            courseYear,
-            exampleTitles,
-          }),
-          images: [image.base64],
-        },
-      ],
-    }),
-  });
+  const timeoutMs =
+    Number(getSetting("ai_local_timeout_ms")) ||
+    Number(process.env.LOCAL_LLM_TIMEOUT_MS) ||
+    DEFAULT_TIMEOUT_MS;
+
+  let response;
+  try {
+    response = await fetch(`${baseUrl}/api/chat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      signal: AbortSignal.timeout(timeoutMs),
+      body: JSON.stringify({
+        model,
+        stream: false,
+        format: CERTIFICATE_VERIFICATION_SCHEMA,
+        messages: [
+          {
+            role: "user",
+            content: buildVerificationInstruction({
+              courseName,
+              submitterName,
+              courseYear,
+              exampleTitles,
+            }),
+            images: [image.base64],
+          },
+        ],
+      }),
+    });
+  } catch (error) {
+    console.error(
+      `로컬 LLM(Ollama) 요청 실패(타임아웃 ${timeoutMs}ms 포함): ${error.message}`,
+    );
+    return null;
+  }
 
   if (!response.ok) {
     console.error(

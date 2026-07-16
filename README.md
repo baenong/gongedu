@@ -450,6 +450,49 @@ docker compose build \
 
 ---
 
+### 로컬 LLM(Ollama)으로 AI 검증 테스트 중 VM 전체가 응답 없음(OOM)
+
+AI 검증 provider를 Local LLM(Ollama)으로 두고 비전 모델(예: `qwen2.5vl:3b`)을 CPU로 돌리다가, SSH/원격 접속을 포함해 VM 전체가 먹통이 되는 경우가 있습니다.
+
+**증상**
+
+- AI 검증 버튼을 누른 뒤로 백엔드는 물론 홈페이지 접속, SSH 접속까지 응답이 없음
+- 재부팅 전까지는 콘솔 접속조차 안 되는 경우도 있음
+
+**원인**
+
+CPU로 AI 검증을 할 경우 비전 모델은 이미지 토큰 처리로 메모리를 크게 사용합니다. `swap`이 없는 상태(`swapon --show` 결과가 비어있음)에서 메모리가 순간적으로 부족해지면, 리눅스가 완충할 여지 없이 시스템 전체가 마비될 수 있습니다.
+
+**해결 방법**
+
+1. swap을 추가해 완충장치를 둡니다 (VM 사양에 맞게 크기 조정).
+
+   ```bash
+   sudo fallocate -l 4G /swapfile
+   sudo chmod 600 /swapfile
+   sudo mkswap /swapfile
+   sudo swapon /swapfile
+   echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+   ```
+
+2. ollama systemd 서비스에 메모리 상한을 걸어, 문제가 생겨도 ollama 프로세스만 죽고 VM 전체는 살아있도록 합니다 (총 메모리에 맞게 값 조정).
+
+   ```bash
+   sudo mkdir -p /etc/systemd/system/ollama.service.d
+   sudo tee /etc/systemd/system/ollama.service.d/override.conf > /dev/null <<'CONF'
+   [Service]
+   MemoryMax=6G
+   MemoryHigh=5G
+   OOMPolicy=kill
+   CONF
+   sudo systemctl daemon-reload
+   sudo systemctl restart ollama
+   ```
+
+3. 위 조치 후에도 CPU 추론 자체가 느리고(문서 한 장에 1분 이상) 응답 품질이 만족스럽지 않을 수 있습니다. `backend/src/services/ai/providers/localVerifier.js`의 요청에는 5분 타임아웃이 걸려있어(`ai_local_timeout_ms` 설정 또는 `LOCAL_LLM_TIMEOUT_MS` 환경변수로 조정 가능) Ollama가 응답 없이 멈춰도 검증 요청 자체는 실패로 끝나고 서버는 계속 동작합니다.
+
+---
+
 ## 라이선스
 
 [MIT License](./LICENSE)
