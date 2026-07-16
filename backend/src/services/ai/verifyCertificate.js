@@ -1,5 +1,6 @@
 import { verifyCertificateWithOpenAI } from "./providers/openaiVerifier.js";
 import { verifyCertificateWithClaude } from "./providers/claudeVerifier.js";
+import { verifyCertificateWithLocal } from "./providers/localVerifier.js";
 import { getSetting } from "../../utils/settings.js";
 
 // 새 provider를 추가할 때는 같은 시그니처의 verify 함수와 isConfigured를 만들어
@@ -16,6 +17,11 @@ const PROVIDERS = {
       Boolean(
         getSetting("ai_anthropic_api_key") || process.env.ANTHROPIC_API_KEY,
       ),
+  },
+  // local은 API 키 없이 서버 내 Ollama를 호출하므로 항상 설정된 것으로 취급한다.
+  local: {
+    verify: verifyCertificateWithLocal,
+    isConfigured: () => true,
   },
 };
 

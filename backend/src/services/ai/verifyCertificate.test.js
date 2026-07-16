@@ -43,6 +43,12 @@ describe("isAiConfigured", () => {
 
     expect(isAiConfigured()).toBe(false);
   });
+
+  it("provider가 local이면 API 키 없이도 true를 반환한다", () => {
+    process.env.AI_PROVIDER = "local";
+
+    expect(isAiConfigured()).toBe(true);
+  });
 });
 
 describe("isAiFlagged", () => {

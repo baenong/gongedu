@@ -53,10 +53,8 @@ const AiVerificationSettings = () => {
     try {
       await api.post("/settings/ai", {
         provider: aiSettings.provider,
-        openaiModel: aiSettings.openaiModel,
-        anthropicModel: aiSettings.anthropicModel,
-        openaiApiKey: aiSettings.openaiApiKey,
-        anthropicApiKey: aiSettings.anthropicApiKey,
+        model: currentAiModel,
+        apiKey: currentAiApiKey || undefined,
       });
       toast.success("AI 설정이 저장되었습니다.");
       const response = await api.get("/settings/ai");
@@ -73,8 +71,8 @@ const AiVerificationSettings = () => {
   };
 
   // 현재 입력된(또는 저장된) 키로 provider의 사용 가능한 모델 목록을 조회
+  // (local은 API 키가 필요 없으므로 apiKey는 무시된다)
   const handleRefreshAiModels = async () => {
-    if (aiSettings.provider === "local") return;
     setLoadingAiModels(true);
     try {
       const response = await api.post("/settings/ai/models", {
@@ -112,7 +110,7 @@ const AiVerificationSettings = () => {
                 [
                   { value: "openai", label: "OpenAI" },
                   { value: "claude", label: "Claude" },
-                  { value: "local", label: "Local LLM (준비 중)" },
+                  { value: "local", label: "Local LLM (Ollama)" },
                 ] as const
               ).map((option) => (
                 <label
@@ -135,90 +133,87 @@ const AiVerificationSettings = () => {
               ))}
             </div>
 
-            {aiSettings.provider !== "local" && (
-              <ActionButton
-                onClick={handleRefreshAiModels}
-                disabled={loadingAiModels}
-                className="mt-4 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600"
-                title="입력된(또는 저장된) API 키로 모델 목록 조회"
-              >
-                {loadingAiModels ? "조회 중..." : "모델목록 호출"}
-              </ActionButton>
-            )}
+            <ActionButton
+              onClick={handleRefreshAiModels}
+              disabled={loadingAiModels}
+              className="mt-4 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600"
+              title={
+                aiSettings.provider === "local"
+                  ? "서버에 설치된 Ollama 모델 목록 조회"
+                  : "입력된(또는 저장된) API 키로 모델 목록 조회"
+              }
+            >
+              {loadingAiModels ? "조회 중..." : "모델목록 호출"}
+            </ActionButton>
           </div>
 
-          {aiSettings.provider === "local" ? (
-            <p className="text-base text-gray-500 dark:text-gray-400">
-              로컬 LLM 연동은 아직 준비 중입니다. 선택해도 실제 검증에는
-              적용되지 않습니다.
-            </p>
-          ) : (
-            <>
-              <div className="max-w-sm w-full">
-                <FormLabel>API 키</FormLabel>
-                <TextInput
-                  type="password"
-                  isRequired={false}
-                  value={currentAiApiKey}
-                  onChange={(e) =>
-                    setAiSettings({
-                      ...aiSettings,
-                      [aiSettings.provider === "claude"
-                        ? "anthropicApiKey"
-                        : "openaiApiKey"]: e.target.value,
-                    })
-                  }
-                  placeholder={
-                    currentAiHasKey
-                      ? "설정됨 - 변경하려면 새 키 입력"
-                      : "설정되지 않음"
-                  }
-                />
-              </div>
-
-              <div className="max-w-sm w-full">
-                <FormLabel>모델</FormLabel>
-                <TextInput
-                  isRequired={false}
-                  value={currentAiModel}
-                  onChange={(e) =>
-                    setAiSettings({
-                      ...aiSettings,
-                      [currentAiModelField]: e.target.value,
-                    })
-                  }
-                  placeholder={
-                    aiSettings.provider === "openai"
-                      ? "예: gpt-4o (비우면 기본값 사용)"
-                      : "예: claude-haiku-4-5 (비우면 기본값 사용)"
-                  }
-                />
-                <div className="mt-2 h-40 overflow-y-auto scrollbar-hide border border-gray-200 dark:border-gray-700 rounded-md divide-y divide-gray-100 dark:divide-gray-700">
-                  {aiModelOptions.length > 0 ? (
-                    aiModelOptions.map((model) => (
-                      <button
-                        type="button"
-                        key={model}
-                        onClick={() =>
-                          setAiSettings({
-                            ...aiSettings,
-                            [currentAiModelField]: model,
-                          })
-                        }
-                        className="w-full text-left px-3 py-1.5 text-base text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-                      >
-                        {model}
-                      </button>
-                    ))
-                  ) : (
-                    <p className="px-3 py-2 text-base text-gray-400 dark:text-gray-500">
-                      "모델목록 호출" 버튼을 누르면 여기에 목록이 표시됩니다.
-                    </p>
-                  )}
-                </div>
-              </div>
-            </>
+          {aiSettings.provider !== "local" && (
+            <div className="max-w-sm w-full">
+              <FormLabel>API 키</FormLabel>
+              <TextInput
+                type="password"
+                isRequired={false}
+                value={currentAiApiKey}
+                onChange={(e) =>
+                  setAiSettings({
+                    ...aiSettings,
+                    [aiSettings.provider === "claude"
+                      ? "anthropicApiKey"
+                      : "openaiApiKey"]: e.target.value,
+                  })
+                }
+                placeholder={
+                  currentAiHasKey
+                    ? "설정됨 - 변경하려면 새 키 입력"
+                    : "설정되지 않음"
+                }
+              />
+            </div>
           )}
+
+          <div className="max-w-sm w-full">
+            <FormLabel>모델</FormLabel>
+            <TextInput
+              isRequired={false}
+              value={currentAiModel}
+              onChange={(e) =>
+                setAiSettings({
+                  ...aiSettings,
+                  [currentAiModelField]: e.target.value,
+                })
+              }
+              placeholder={
+                aiSettings.provider === "openai"
+                  ? "예: gpt-4o (비우면 기본값 사용)"
+                  : aiSettings.provider === "claude"
+                    ? "예: claude-haiku-4-5 (비우면 기본값 사용)"
+                    : "예: qwen2.5vl:3b (비우면 기본값 사용)"
+              }
+            />
+            <div className="mt-2 h-40 overflow-y-auto scrollbar-hide border border-gray-200 dark:border-gray-700 rounded-md divide-y divide-gray-100 dark:divide-gray-700">
+              {aiModelOptions.length > 0 ? (
+                aiModelOptions.map((model) => (
+                  <button
+                    type="button"
+                    key={model}
+                    onClick={() =>
+                      setAiSettings({
+                        ...aiSettings,
+                        [currentAiModelField]: model,
+                      })
+                    }
+                    className="w-full text-left px-3 py-1.5 text-base text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                  >
+                    {model}
+                  </button>
+                ))
+              ) : (
+                <p className="px-3 py-2 text-base text-gray-400 dark:text-gray-500">
+                  "모델목록 호출" 버튼을 누르면 여기에 목록이 표시됩니다.
+                </p>
+              )}
+            </div>
+          </div>
         </div>
 
         <div className="flex justify-end mt-2">

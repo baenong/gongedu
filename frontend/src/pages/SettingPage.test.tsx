@@ -258,10 +258,8 @@ describe("SettingPage - AI 검증 설정 저장", () => {
     await waitFor(() =>
       expect(apiPostMock).toHaveBeenCalledWith("/settings/ai", {
         provider: "openai",
-        openaiModel: "gpt-4o-mini",
-        anthropicModel: "",
-        openaiApiKey: "sk-test-key",
-        anthropicApiKey: "",
+        model: "gpt-4o-mini",
+        apiKey: "sk-test-key",
       }),
     );
   });

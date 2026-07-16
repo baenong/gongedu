@@ -61,9 +61,8 @@ describe("설정 화면 접근 권한 (총괄담당 이상)", () => {
       .set("Authorization", `Bearer ${seniorManagerToken}`)
       .send({
         provider: "openai",
-        openaiModel: "gpt-4o",
-        anthropicModel: "",
-        openaiApiKey: "sk-test-secret-value",
+        model: "gpt-4o",
+        apiKey: "sk-test-secret-value",
       });
     expect(saveResponse.status).toBe(200);
 

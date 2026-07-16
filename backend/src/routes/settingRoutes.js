@@ -10,6 +10,7 @@ import {
   requireSeniorManager,
 } from "../middlewares/authMiddleware.js";
 import { getSetting } from "../utils/settings.js";
+import { getLocalLlmBaseUrl } from "../services/ai/providers/localVerifier.js";
 
 const router = express.Router();
 const __filename = fileURLToPath(import.meta.url);
@@ -136,18 +137,31 @@ router.post("/", authenticateToken, requireSeniorManager, (req, res) => {
   }
 });
 
+// provider 값과 settings 테이블 키 접두사가 다른 경우가 있다(claude → anthropic,
+// ANTHROPIC_API_KEY env var 관례를 따름). 새 provider를 추가할 때는 이 맵에
+// 한 항목만 추가하면 GET/POST 양쪽에 자동으로 반영된다.
+const PROVIDER_SETTINGS_PREFIX = {
+  openai: "openai",
+  claude: "anthropic",
+  local: "local",
+};
+
 // GET /api/settings/ai - AI 검증 설정 조회 (API 키는 설정 여부만 반환)
 router.get("/ai", authenticateToken, requireSeniorManager, (req, res) => {
   try {
     res.json({
       provider: getSetting("ai_provider") || "",
-      openaiModel: getSetting("ai_openai_model") || "",
-      anthropicModel: getSetting("ai_anthropic_model") || "",
+      openaiModel: getSetting(`ai_${PROVIDER_SETTINGS_PREFIX.openai}_model`) || "",
+      anthropicModel:
+        getSetting(`ai_${PROVIDER_SETTINGS_PREFIX.claude}_model`) || "",
+      localModel: getSetting(`ai_${PROVIDER_SETTINGS_PREFIX.local}_model`) || "",
       hasOpenaiKey: Boolean(
-        getSetting("ai_openai_api_key") || process.env.OPENAI_API_KEY,
+        getSetting(`ai_${PROVIDER_SETTINGS_PREFIX.openai}_api_key`) ||
+          process.env.OPENAI_API_KEY,
       ),
       hasAnthropicKey: Boolean(
-        getSetting("ai_anthropic_api_key") || process.env.ANTHROPIC_API_KEY,
+        getSetting(`ai_${PROVIDER_SETTINGS_PREFIX.claude}_api_key`) ||
+          process.env.ANTHROPIC_API_KEY,
       ),
     });
   } catch (error) {
@@ -159,19 +173,20 @@ router.get("/ai", authenticateToken, requireSeniorManager, (req, res) => {
 // POST /api/settings/ai - AI 검증 설정 저장
 // API 키 입력란을 비워두면 기존에 저장된 값을 그대로 유지한다.
 router.post("/ai", authenticateToken, requireSeniorManager, (req, res) => {
-  const { provider, openaiModel, anthropicModel, openaiApiKey, anthropicApiKey } =
-    req.body;
+  const { provider, model, apiKey } = req.body;
+  const prefix = PROVIDER_SETTINGS_PREFIX[provider];
+  if (!prefix) {
+    return res.status(400).json({ message: "지원하지 않는 제공자입니다." });
+  }
 
   try {
     const upsert = db.prepare(`
       INSERT INTO settings (key, value) VALUES (?, ?)
       ON CONFLICT(key) DO UPDATE SET value = excluded.value
     `);
-    upsert.run("ai_provider", provider ?? "");
-    upsert.run("ai_openai_model", openaiModel ?? "");
-    upsert.run("ai_anthropic_model", anthropicModel ?? "");
-    if (openaiApiKey) upsert.run("ai_openai_api_key", openaiApiKey);
-    if (anthropicApiKey) upsert.run("ai_anthropic_api_key", anthropicApiKey);
+    upsert.run("ai_provider", provider);
+    upsert.run(`ai_${prefix}_model`, model ?? "");
+    if (apiKey) upsert.run(`ai_${prefix}_api_key`, apiKey);
 
     res.json({ message: "AI 설정이 저장되었습니다." });
   } catch (error) {
@@ -202,6 +217,18 @@ const AI_MODEL_PROVIDERS = {
       return list.data.map((m) => m.id).sort();
     },
   },
+  // local(Ollama)은 API 키가 없으므로 키 확인 없이 서버에 설치된 모델 목록을 조회한다.
+  local: {
+    requiresKey: false,
+    listModelIds: async () => {
+      const response = await fetch(`${getLocalLlmBaseUrl()}/api/tags`);
+      if (!response.ok) {
+        throw new Error(`Ollama 응답 오류: ${response.status}`);
+      }
+      const data = await response.json();
+      return (data.models ?? []).map((m) => m.name).sort();
+    },
+  },
 };
 
 // apiKey를 body로 직접 받으면(아직 저장 전인 입력값) 그 키로 조회하고,
@@ -218,9 +245,12 @@ router.post(
     }
 
     try {
-      const key = config.resolveKey(apiKey);
-      if (!key) {
-        return res.status(400).json({ message: "API 키를 먼저 입력하세요." });
+      let key;
+      if (config.requiresKey !== false) {
+        key = config.resolveKey(apiKey);
+        if (!key) {
+          return res.status(400).json({ message: "API 키를 먼저 입력하세요." });
+        }
       }
       const models = await config.listModelIds(key);
       res.json({ models });
